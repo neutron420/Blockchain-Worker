@@ -1,261 +1,431 @@
-# Grievance Blockchain Worker
+<div align="center">
 
-A production-ready blockchain worker service that processes user registrations and complaints from Redis queues and permanently stores them on the blockchain with IPFS integration.
+# Swaraj Blockchain Network
 
-## 📋 Overview
+<br/>
 
-This worker service acts as a bridge between your application's Redis queue system and the blockchain. It automatically processes incoming user registrations and grievance complaints, uploads metadata to IPFS (InterPlanetary File System) via Pinata, and records transactions on the blockchain using smart contracts.
+<div>
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" alt="Solidity">
+  <img src="https://img.shields.io/badge/Hardhat-FFF100?style=for-the-badge&logo=hardhat&logoColor=black" alt="Hardhat">
+  <img src="https://img.shields.io/badge/Ethereum-3C3C3D?style=for-the-badge&logo=ethereum&logoColor=white" alt="Ethereum">
+  <img src="https://img.shields.io/badge/IPFS-65C2CB?style=for-the-badge&logo=ipfs&logoColor=white" alt="IPFS">
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
+  <img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+</div>
 
-### Key Features
+<br/>
 
-- 🔄 **Automatic Queue Processing**: Continuously polls Redis queues for new user registrations and complaints
-- 🔗 **Blockchain Integration**: Stores data immutably on the blockchain using Ethereum smart contracts
-- 📦 **IPFS Storage**: Uploads complaint metadata to IPFS via Pinata for decentralized storage
-- 🔁 **Retry Mechanism**: Built-in retry logic for failed transactions with exponential backoff
-- 🚀 **Production Ready**: Dockerized and deployable to AWS ECS with health checks
-- ⚡ **High Performance**: Built with Bun runtime for optimal performance
+**A blockchain worker service for SwarajDesk that processes grievance complaints and user registrations from Redis queues, uploads metadata to IPFS via Pinata, stores immutable records on Ethereum blockchain, and syncs data to cloud database for transparent and tamper-proof complaint management.**
 
-## 🏗️ Architecture
+<p>
+  <a href="#about-the-project">About</a> •
+  <a href="#key-features">Features</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a>
+</p>
+
+[**SwarajDesk**](https://github.com/neutron420/sih-swarajdesk-2025) · [**Report a Bug**](https://github.com/neutron420/swaraj-blockchain-network/issues) · [**Request a Feature**](https://github.com/neutron420/swaraj-blockchain-network/issues)
+
+</div>
+
+## About The Project
+
+Swaraj Blockchain Network is a critical component of the SwarajDesk citizen grievance redressal system. This worker service acts as a bridge between the application layer and blockchain, ensuring every complaint and user registration is permanently and immutably recorded on the Ethereum blockchain. By processing Redis queue messages, uploading metadata to IPFS, and storing transaction hashes on both blockchain and cloud database (Pinata DB), it provides complete transparency and accountability in the grievance management process.
+
+### How It Works
 
 ```
-Application → Redis Queue → Blockchain Worker → IPFS (Pinata) → Blockchain
+SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Cloud DB (Pinata DB)
+                                  ↓
+                            Etherscan Verification
 ```
 
-1. **Application Layer**: Your frontend/API pushes user registrations and complaints to Redis queues
-2. **Redis Queues**: Two queues are monitored:
-   - `user:registration:queue` - User registration data
-   - `complaint:blockchain:queue` - Grievance complaints
-3. **Worker Service**: Polls queues, processes data, uploads to IPFS, and writes to blockchain
-4. **Blockchain**: Permanent, immutable storage via smart contract transactions
+1. **Queue Processing**: Listens to Redis queues for new complaints and user registrations
+2. **IPFS Upload**: Uploads complaint metadata to IPFS via Pinata for decentralized storage
+3. **Blockchain Recording**: Stores complaint hash on Ethereum blockchain via smart contracts
+4. **Cloud Sync**: Syncs transaction details to Pinata cloud database
+5. **Verification**: All transactions are visible on Etherscan for public verification
 
-## 🚀 Quick Start
+### Built With
+
+This worker service combines modern blockchain technologies with robust queue processing for reliable data persistence.
+
+* **Language:** [TypeScript](https://www.typescriptlang.org/)
+* **Runtime:** [Bun](https://bun.sh/) (High-performance JavaScript runtime)
+* **Smart Contracts:** [Solidity](https://soliditylang.org/)
+* **Development Framework:** [Hardhat](https://hardhat.org/)
+* **Blockchain:** [Ethereum](https://ethereum.org/)
+* **Decentralized Storage:** [IPFS](https://ipfs.io/) via [Pinata](https://www.pinata.cloud/)
+* **Message Queue:** [Redis](https://redis.io/)
+* **Containerization:** [Docker](https://www.docker.com/)
+* **Deployment:** [AWS ECS](https://aws.amazon.com/ecs/)
+
+## Key Features
+
+* **Automated Queue Processing:** Continuously monitors Redis queues for new complaints and user registrations
+* **Blockchain Immutability:** Permanently stores complaint hashes on Ethereum blockchain
+* **IPFS Integration:** Uploads complaint metadata to IPFS via Pinata for decentralized storage
+* **Dual Database Sync:** Stores transaction data in both blockchain and Pinata cloud database
+* **Etherscan Verification:** All transactions are publicly verifiable on Etherscan
+* **Retry Mechanism:** Built-in exponential backoff retry logic for failed transactions
+* **Smart Contract Integration:** Uses Solidity smart contracts for data storage
+* **Production Ready:** Fully Dockerized with AWS ECS deployment support
+* **Health Monitoring:** Built-in health checks for production deployment
+* **Type Safety:** Full TypeScript implementation for reliability
+
+## Architecture
+
+### Queue Structure
+
+**User Registration Queue:** `user:registration:queue`
+- User details (ID, email, phone, name)
+- Aadhaar information
+- Location data (PIN, district, city, state, municipal)
+- Timestamp
+
+**Complaint Queue:** `complaint:blockchain:queue`
+- Complaint details (category, subcategory, description)
+- Urgency level and status
+- Attachment URLs
+- Department assignment
+- Location information
+- User ID and submission date
+- Public/private visibility flag
+
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     SwarajDesk App                       │
+│              (User-FE, Admin-FE, Backend)                │
+└────────────────────┬────────────────────────────────────┘
+                     │ Push to Queue
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                    Redis Queues                          │
+│   user:registration:queue | complaint:blockchain:queue  │
+└────────────────────┬────────────────────────────────────┘
+                     │ Poll
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              Blockchain Worker (This Repo)               │
+│                                                          │
+│  1. Fetch from Queue → 2. Upload to IPFS (Pinata)       │
+│  3. Store on Ethereum → 4. Sync to Pinata DB            │
+└────┬────────────────┬──────────────────┬────────────────┘
+     │                │                  │
+     ▼                ▼                  ▼
+  ┌──────┐      ┌──────────┐      ┌────────────┐
+  │ IPFS │      │Ethereum  │      │ Pinata DB  │
+  │Pinata│      │Blockchain│      │(Cloud DB)  │
+  └──────┘      └─────┬────┘      └────────────┘
+                      │
+                      ▼
+                ┌──────────┐
+                │Etherscan │
+                │Verification│
+                └──────────┘
+```
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ or Bun runtime
-- Redis instance (local or cloud)
-- Ethereum RPC endpoint
-- Pinata JWT token for IPFS uploads
-- Private key for blockchain transactions
+* **Bun** (1.0+) or **Node.js** (18+)
+  ```sh
+  curl -fsSL https://bun.sh/install | bash
+  ```
+
+* **Redis** (7.0+)
+  ```sh
+  # Docker
+  docker run -d -p 6379:6379 redis:7-alpine
+  ```
+
+* **Ethereum RPC Access**
+  - Infura, Alchemy, or any Ethereum RPC provider
+  - Private key with ETH for gas fees
+
+* **Pinata Account**
+  - JWT token for IPFS uploads
+  - API access for cloud database
 
 ### Installation
 
-```bash
-# Install dependencies
-bun install
-# or
-npm install
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/neutron420/swaraj-blockchain-network.git
+    cd swaraj-blockchain-network
+    ```
+
+2.  **Install dependencies:**
+    ```sh
+    bun install
+    # or
+    npm install
+    ```
+
+3.  **Set up environment variables:**
+    Copy `.env.example` to `.env` and configure:
+    ```env
+    # Redis Configuration
+    REDIS_URL=redis://localhost:6379
+
+    # Blockchain Configuration
+    BLOCKCHAIN_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
+    PRIVATE_KEY=your_ethereum_private_key
+    CONTRACT_ADDRESS=0xYourDeployedContractAddress
+
+    # IPFS/Pinata Configuration
+    PINATA_JWT=your_pinata_jwt_token
+    PINATA_API_URL=https://api.pinata.cloud
+
+    # Worker Configuration
+    WORKER_POLL_INTERVAL=5000
+    MAX_RETRIES=3
+    ```
+
+4.  **Deploy smart contracts (if not deployed):**
+    ```sh
+    # Compile contracts
+    bun run compile
+
+    # Deploy to network
+    bunx hardhat run scripts/deploy.ts --network sepolia
+    ```
+
+5.  **Start the worker:**
+    ```sh
+    # Development
+    bun run worker
+
+    # Production
+    bun run build
+    bun dist/src/worker.js
+    ```
+
+## Project Structure
+
+```
+swaraj-blockchain-network/
+├── contracts/              # Solidity smart contracts
+│   └── GrievanceStorage.sol
+├── src/
+│   └── worker.ts          # Main worker implementation
+├── scripts/               # Deployment and utility scripts
+├── test/                  # Smart contract tests
+├── artifacts/             # Compiled contract ABIs
+├── typechain-types/       # TypeChain generated types
+├── doc/                   # Additional documentation
+├── Dockerfile             # Docker configuration
+├── aws-ecs-task-definition.json  # ECS task definition
+├── hardhat.config.ts      # Hardhat configuration
+└── package.json           # Dependencies
 ```
 
-### Configuration
+## Smart Contracts
 
-Create a `.env` file in the root directory:
+### GrievanceStorage.sol
 
-```env
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
+Main contract for storing complaint and user data:
 
-# Blockchain Configuration
-BLOCKCHAIN_RPC_URL=https://your-rpc-endpoint
-PRIVATE_KEY=your_private_key_here
-CONTRACT_ADDRESS=0xYourContractAddress
+```solidity
+// Store complaint hash
+function storeComplaint(
+    string memory complaintId,
+    string memory ipfsHash,
+    uint256 timestamp
+) public returns (bool)
 
-# IPFS Configuration
-PINATA_JWT=your_pinata_jwt_token
-
-# Worker Configuration
-WORKER_POLL_INTERVAL=5000
+// Store user registration
+function registerUser(
+    string memory userId,
+    string memory dataHash,
+    uint256 timestamp
+) public returns (bool)
 ```
 
-### Running Locally
+### Deployment
 
-```bash
-# Development mode
-bun run worker
+```sh
+# Deploy to Sepolia testnet
+bunx hardhat run scripts/deploy.ts --network sepolia
 
-# Production build
-bun run build
-bun dist/src/worker.js
+# Deploy to mainnet
+bunx hardhat run scripts/deploy.ts --network mainnet
 ```
 
-## 🐳 Docker Deployment
+## Running with Docker
 
-### Build Docker Image
+### Build Image
 
-```bash
-docker build -t blockchain-worker .
+```sh
+docker build -t swaraj-blockchain-worker .
 ```
 
 ### Run Container
 
-```bash
+```sh
 docker run -d \
+  --name swaraj-worker \
   --env-file .env \
-  --name blockchain-worker \
-  blockchain-worker
+  -p 8080:8080 \
+  swaraj-blockchain-worker
 ```
 
-## ☁️ AWS ECS Deployment
+### Docker Compose
 
-This project includes complete AWS ECS deployment configuration for production use.
+```sh
+docker-compose up -d
+```
+
+## AWS ECS Deployment
 
 ### Prerequisites
 
-- AWS CLI configured with appropriate credentials
-- Docker installed locally
-- ECR repository created
-- Secrets stored in AWS Secrets Manager
+* AWS CLI configured
+* ECR repository created
+* Secrets in AWS Secrets Manager
 
 ### Deployment Steps
 
-1. **Build and push Docker image to ECR**
-   ```bash
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
-   docker build -t blockchain-worker .
-   docker tag blockchain-worker:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/blockchain-worker:latest
-   docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/blockchain-worker:latest
+1. **Push to ECR:**
+   ```sh
+   aws ecr get-login-password --region us-east-1 | \
+     docker login --username AWS --password-stdin \
+     <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+
+   docker build -t swaraj-blockchain-worker .
+   docker tag swaraj-blockchain-worker:latest \
+     <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/swaraj-blockchain-worker:latest
+   docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/swaraj-blockchain-worker:latest
    ```
 
-2. **Register task definition**
-   ```bash
-   aws ecs register-task-definition --cli-input-json file://aws-ecs-task-definition.json
+2. **Register Task Definition:**
+   ```sh
+   aws ecs register-task-definition \
+     --cli-input-json file://aws-ecs-task-definition.json
    ```
 
-3. **Create ECS service**
-   ```bash
-   aws ecs create-service --cluster blockchain-worker-cluster --service-name blockchain-worker-service --task-definition blockchain-worker --desired-count 1 --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
+3. **Create/Update Service:**
+   ```sh
+   aws ecs create-service \
+     --cluster swaraj-cluster \
+     --service-name blockchain-worker \
+     --task-definition swaraj-blockchain-worker \
+     --desired-count 1 \
+     --launch-type FARGATE
    ```
 
-### Managing the Service
+### Monitoring
 
-**Start the worker:**
-```bash
-aws ecs update-service --cluster blockchain-worker-cluster --service blockchain-worker-service --desired-count 1 --region us-east-1
+```sh
+# View logs
+aws logs tail /ecs/swaraj-blockchain-worker --follow
+
+# Check service status
+aws ecs describe-services \
+  --cluster swaraj-cluster \
+  --services blockchain-worker
 ```
 
-**Stop the worker:**
-```bash
-aws ecs update-service --cluster blockchain-worker-cluster --service blockchain-worker-service --desired-count 0 --region us-east-1
-```
+## Testing
 
-**View logs:**
-```bash
-aws logs tail /ecs/blockchain-worker --follow --region us-east-1
-```
-
-## 📊 Data Processing
-
-### User Registration Queue
-
-The worker processes user registrations with the following data structure:
-
-- User ID, email, phone number, name
-- Aadhaar ID
-- Location details (PIN, district, city, state, municipal)
-- Creation timestamp
-
-### Complaint Queue
-
-The worker processes complaints with:
-
-- Category and subcategory
-- Description and urgency level
-- Attachment URLs
-- Assigned department
-- Location information
-- User ID and submission date
-- Public/private flag
-
-### Processing Flow
-
-1. Worker polls Redis queues at configured intervals
-2. Retrieves data from queue (FIFO)
-3. Uploads metadata to IPFS via Pinata
-4. Constructs blockchain transaction
-5. Submits transaction to smart contract
-6. Handles retries on failure
-7. Logs success/failure for monitoring
-
-## 🔧 Development
-
-### Project Structure
-
-```
-blockchain-be/
-├── src/
-│   └── worker.ts          # Main worker implementation
-├── artifacts/             # Compiled smart contract ABIs
-├── contracts/             # Solidity smart contracts
-├── Dockerfile             # Docker configuration
-├── aws-ecs-task-definition.json  # AWS ECS task definition
-└── tsconfig.json          # TypeScript configuration
-```
-
-### Building
-
-```bash
-# Compile TypeScript
-bun run build
-# or
-tsc
-```
-
-### Testing
-
-```bash
+```sh
 # Run Hardhat tests
 bun test
-# or
-npx hardhat test
+
+# Run with coverage
+bun run coverage
+
+# Test specific file
+bun test test/GrievanceStorage.test.ts
 ```
 
-## 🔐 Security Considerations
+## Integration with SwarajDesk
 
-- **Private Keys**: Never commit private keys to version control. Use AWS Secrets Manager or environment variables
-- **Redis Security**: Use secure Redis connections (TLS) in production
-- **IPFS**: Pinata JWT tokens should be stored securely
-- **Network**: Deploy worker in secure VPC with appropriate security groups
+This worker is part of the SwarajDesk ecosystem:
 
-## 📝 Environment Variables
+1. **User-BE/Admin-BE** pushes complaints to Redis
+2. **Worker** processes queue and stores on blockchain
+3. **Frontend** can verify transactions on Etherscan
+4. **Pinata DB** provides fast query access to blockchain data
+
+See [SwarajDesk Repository](https://github.com/neutron420/sih-swarajdesk-2025) for complete system documentation.
+
+## Environment Variables
 
 | Variable | Description | Required |
-|----------|-------------|----------|
+| --- | --- | --- |
 | `REDIS_URL` | Redis connection string | Yes |
 | `BLOCKCHAIN_RPC_URL` | Ethereum RPC endpoint | Yes |
-| `PRIVATE_KEY` | Wallet private key for transactions | Yes |
-| `CONTRACT_ADDRESS` | Deployed smart contract address | Yes |
-| `PINATA_JWT` | Pinata API JWT token | Yes |
-| `WORKER_POLL_INTERVAL` | Polling interval in milliseconds | No (default: 5000) |
+| `PRIVATE_KEY` | Wallet private key | Yes |
+| `CONTRACT_ADDRESS` | Deployed contract address | Yes |
+| `PINATA_JWT` | Pinata JWT token | Yes |
+| `PINATA_API_URL` | Pinata API endpoint | No |
+| `WORKER_POLL_INTERVAL` | Queue poll interval (ms) | No |
+| `MAX_RETRIES` | Max retry attempts | No |
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Worker not processing items
+### Worker not processing
 
-- Check Redis connection: Verify `REDIS_URL` is correct
-- Check queue names: Ensure queues match expected names
-- Check logs: Review CloudWatch logs for errors
+* Check Redis connection and queue names
+* Verify environment variables
+* Review CloudWatch/Docker logs
 
-### Blockchain transaction failures
+### Transaction failures
 
-- Verify RPC endpoint is accessible
-- Check private key has sufficient balance for gas
-- Verify contract address is correct
-- Check network congestion
+* Ensure wallet has sufficient ETH
+* Verify RPC endpoint accessibility
+* Check contract address is correct
+* Monitor Etherscan for transaction status
 
 ### IPFS upload failures
 
-- Verify Pinata JWT token is valid
-- Check API rate limits
-- Verify network connectivity
+* Verify Pinata JWT token validity
+* Check API rate limits
+* Ensure network connectivity
 
-## 📄 License
+## Security Best Practices
 
-ISC
+* Never commit private keys to version control
+* Use AWS Secrets Manager for production secrets
+* Implement rate limiting on queue processing
+* Monitor transaction costs and set gas limits
+* Use secure Redis connections (TLS) in production
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Please ensure all tests pass before submitting pull requests.
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-## 📞 Support
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-For issues and questions, please open an issue in the repository.
+## License
+
+ISC License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+* Built for **Smart India Hackathon 2025**
+* Part of the **SwarajDesk** citizen grievance redressal system
+* [Hardhat](https://hardhat.org/) for smart contract development
+* [Pinata](https://www.pinata.cloud/) for IPFS infrastructure
+* [Bun](https://bun.sh/) for high-performance runtime
+
+## Contact
+
+Project Link: [https://github.com/neutron420/swaraj-blockchain-network](https://github.com/neutron420/swaraj-blockchain-network)
+
+SwarajDesk Main Repo: [https://github.com/neutron420/sih-swarajdesk-2025](https://github.com/neutron420/sih-swarajdesk-2025)
+
+---
+
+**Swaraj Blockchain Network** - Ensuring Transparency and Accountability in Governance
