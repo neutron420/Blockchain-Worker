@@ -82,6 +82,9 @@ class BlockchainWorker {
     this.redis = process.env.REDIS_URL
       ? new Redis(process.env.REDIS_URL)
       : new Redis();
+    this.redis.on("error", (err) => {
+      console.error("Redis connection error", err);
+    });
 
     this.provider = new ethers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
     this.wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);

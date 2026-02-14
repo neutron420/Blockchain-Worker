@@ -1,0 +1,62 @@
+{
+  "family": "blockchain-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::432344279126:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "blockchain-worker",
+      "image": "432344279126.dkr.ecr.us-east-1.amazonaws.com/blockchain-worker:latest",
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/blockchain-worker",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "environment": [
+        {
+          "name": "REDIS_URL",
+          "value": "redis://default:iCx5pD9mD6u9VNKuI8oqE4h2QcyvTrkP@redis-19333.c9.us-east-1-4.ec2.cloud.redislabs.com:19333"
+        },
+        {
+          "name": "BLOCKCHAIN_RPC_URL",
+          "value": "https://eth-sepolia.g.alchemy.com/v2/bQ0qQf1ccLRLnSETVYcsY"
+        },
+        {
+          "name": "CONTRACT_ADDRESS",
+          "value": "0xD1291B832536Aea6b84B95433a2ea939c31635F7"
+        },
+        {
+          "name": "WORKER_POLL_INTERVAL",
+          "value": "5000"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:432344279126:secret:blockchain/private-key"
+        },
+        {
+          "name": "PINATA_JWT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:432344279126:secret:blockchain/pinata-jwt"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "ps aux | grep '[b]un dist/src/worker.js' || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
+

@@ -8,6 +8,8 @@
 /bundle
 
 # Hardhat Build Artifacts
+# Keep compiled contract artifacts for Docker builds
+!/artifacts/contracts/**/*.json
 /artifacts
 
 # Hardhat compilation (v2) support directory

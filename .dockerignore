@@ -1,0 +1,48 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist
+.cache
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+doc
+*.md
+
+# Test files
+test
+*.test.ts
+*.spec.ts
+
+# Development files
+hardhat.config.ts
+scripts
+ignition
+
+# Lock files (we'll use what's in the repo)
+# package-lock.json
+# bun.lock
+
