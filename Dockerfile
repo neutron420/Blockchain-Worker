@@ -29,8 +29,15 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/artifacts ./artifacts
 COPY --from=builder /app/package.json ./
 
-# Install only production dependencies
-RUN bun install --production
+
+    # Install only production dependencies
+    RUN bun install --production
+
+    # Expose port for Render
+    EXPOSE 3008
+
+    # Start the Express server
+    CMD ["bun", "run", "server.ts"]
 
 # Run the worker
 CMD ["bun", "dist/src/worker.js"]
