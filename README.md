@@ -424,8 +424,6 @@ ISC License - see the [LICENSE](LICENSE) file for details.
 
 Project Link: [https://github.com/neutron420/swaraj-blockchain-network](https://github.com/neutron420/swaraj-blockchain-network)
 
-SwarajDesk Main Repo: [https://github.com/neutron420/sih-swarajdesk-2025](https://github.com/neutron420/sih-swarajdesk-2025)
-
 ---
 
 **Swaraj Blockchain Network** - Ensuring Transparency and Accountability in Governance
