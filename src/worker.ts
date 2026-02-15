@@ -105,7 +105,20 @@ class BlockchainWorker {
     while (this.isRunning) {
       try {
         await this.processUserQueue();
-        await this.processComplaintQueue();
+
+        // Try complaint queue up to 3 times
+        let found = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const processed = await this.processComplaintQueue();
+          if (processed) {
+            found = true;
+            break;
+          }
+          if (attempt < 3) await this.sleep(1000);
+        }
+        if (!found) {
+          console.log("No complaints found in queue after 3 attempts.");
+        }
       } catch (e) {
         console.error("Worker loop error:", e);
       }
@@ -202,23 +215,35 @@ class BlockchainWorker {
   }
 
   /** ========== COMPLAINT REGISTRATION ========== */
-  private async processComplaintQueue() {
+  private async processComplaintQueue(): Promise<boolean> {
     const raw = await this.redis.lpop(Q_COMPLAINTS);
-    if (!raw) return;
+    if (!raw) return false;
 
-    const data: ComplaintQueueData = JSON.parse(raw);
-    const id = data.id || `COMP-${uuidv4()}`;
+    const rawData = JSON.parse(raw);
+    const id = rawData.id || `COMP-${uuidv4()}`;
 
-    // Validate required fields
-    if (!data.description || !data.userId || !data.categoryId || !data.location) {
-      console.error(`❌ Skipping invalid complaint ${id} - missing required fields:`, {
-        hasDescription: !!data.description,
-        hasUserId: !!data.userId,
-        hasCategoryId: !!data.categoryId,
-        hasLocation: !!data.location
-      });
-      return;
-    }
+    // Fill in defaults for missing fields so everything gets stored on-chain
+    const data: ComplaintQueueData = {
+      id,
+      categoryId: rawData.categoryId || "UNKNOWN",
+      subCategory: rawData.subCategory || "Unknown",
+      description: rawData.description || `Complaint ${id}`,
+      urgency: rawData.urgency || "MEDIUM",
+      attachmentUrl: rawData.attachmentUrl || "",
+      assignedDepartment: rawData.assignedDepartment || "GENERAL",
+      isPublic: rawData.isPublic ?? true,
+      userId: rawData.userId || rawData.assignedTo?.id || `USER-${id}`,
+      submissionDate: rawData.submissionDate || new Date().toISOString(),
+      location: rawData.location || {
+        pin: rawData.pin || "",
+        district: rawData.district || "",
+        city: rawData.city || "",
+        locality: rawData.locality || "",
+        state: rawData.state || "India",
+      },
+    };
+
+    console.log(`Processing complaint ${id}`);
 
     try {
       await this.registerComplaint(id, data);
@@ -226,6 +251,7 @@ class BlockchainWorker {
     } catch (err: any) {
       console.error("Complaint failed:", err.message);
     }
+    return true;
   }
 
   private async registerComplaint(id: string, data: ComplaintQueueData) {

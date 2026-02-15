@@ -14,26 +14,26 @@ import * as Contracts from ".";
 declare module "hardhat/types/runtime" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
     getContractFactory(
-      name: "GrievanceContract",
+      name: "GrievanceContractOptimized",
       signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.GrievanceContract__factory>;
+    ): Promise<Contracts.GrievanceContractOptimized__factory>;
 
     getContractAt(
-      name: "GrievanceContract",
+      name: "GrievanceContractOptimized",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
-    ): Promise<Contracts.GrievanceContract>;
+    ): Promise<Contracts.GrievanceContractOptimized>;
 
     deployContract(
-      name: "GrievanceContract",
+      name: "GrievanceContractOptimized",
       signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.GrievanceContract>;
+    ): Promise<Contracts.GrievanceContractOptimized>;
 
     deployContract(
-      name: "GrievanceContract",
+      name: "GrievanceContractOptimized",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.GrievanceContract>;
+    ): Promise<Contracts.GrievanceContractOptimized>;
 
     // default types
     getContractFactory(
