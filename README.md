@@ -25,7 +25,7 @@
 
 <br/>
 
-**A blockchain worker service for SwarajDesk that processes grievance complaints and user registrations from Redis queues, uploads metadata to IPFS via Pinata, stores immutable records on Ethereum blockchain, and syncs data to cloud database for transparent and tamper-proof complaint management.**
+**A blockchain worker service for SwarajDesk that processes grievance complaints and user registrations from Redis queues, uploads metadata to IPFS via Pinata, stores immutable records on Ethereum blockchain, and records on-chain complaint status audits, SLA events, and escalation history for transparent and tamper-proof complaint management.**
 
 <p>
   <a href="#about-the-project">About</a> •
@@ -42,12 +42,12 @@
 
 ## About The Project
 
-Swaraj Blockchain Network is a critical component of the SwarajDesk citizen grievance redressal system. This worker service acts as a bridge between the application layer and blockchain, ensuring every complaint and user registration is permanently and immutably recorded on the Ethereum blockchain. By processing Redis queue messages, uploading metadata to IPFS, and storing transaction hashes on both blockchain and cloud database (Pinata DB), it provides complete transparency and accountability in the grievance management process.
+Swaraj Blockchain Network is a critical component of the SwarajDesk citizen grievance redressal system. This worker service acts as a bridge between the application layer and blockchain, ensuring every complaint and user registration is permanently and immutably recorded on the Ethereum blockchain. By processing Redis queue messages, uploading metadata to IPFS, and storing transaction hashes, block numbers, and IPFS CIDs in Redis-backed metadata keys, it provides complete transparency and accountability in the grievance management process.
 
 ### How It Works
 
 ```
-SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Cloud DB (Pinata DB)
+SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Redis Metadata
                                   ↓
                             Etherscan Verification
 ```
@@ -55,7 +55,7 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Clo
 1. **Queue Processing**: Listens to Redis queues for new complaints and user registrations
 2. **IPFS Upload**: Uploads complaint metadata to IPFS via Pinata for decentralized storage
 3. **Blockchain Recording**: Stores complaint hash on Ethereum blockchain via smart contracts
-4. **Cloud Sync**: Syncs transaction details to Pinata cloud database
+4. **Metadata Sync**: Stores transaction hash, block number, and IPFS CID in Redis-backed metadata keys
 5. **Verification**: All transactions are visible on Etherscan for public verification
 
 ### Built With
@@ -82,7 +82,10 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Clo
 * 🔄 **Automated Queue Processing** — Continuously monitors Redis queues for new complaints and user registrations
 * ⛓️ **Blockchain Immutability** — Permanently stores complaint hashes on Ethereum blockchain
 * 📦 **IPFS Integration** — Uploads complaint metadata to IPFS via Pinata for decentralized storage
-* 💾 **Dual Database Sync** — Stores transaction data in both blockchain and Pinata cloud database
+* 💾 **Metadata Sync** — Stores transaction hashes, block numbers, and IPFS CIDs alongside the blockchain record
+* 🧾 **Status Audit Trail** — Captures every complaint status change on-chain with actor and timestamp metadata
+* ⏱️ **SLA Tracking** — Records SLA expectations and breach events on-chain for accountability
+* ⬆️ **Escalation Trail** — Persists complaint escalation history on-chain for public transparency
 * 🔍 **Etherscan Verification** — All transactions are publicly verifiable on Etherscan
 * 🔁 **Retry Mechanism** — Built-in exponential backoff retry logic for failed transactions
 * 📜 **Smart Contract Integration** — Uses Solidity smart contracts for data storage
@@ -109,6 +112,7 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Clo
 - Location information
 - User ID and submission date
 - Public/private visibility flag
+- Optional SLA deadline, escalation target, and status reason fields
 
 ### Data Flow
 
@@ -129,13 +133,14 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Clo
 │              Blockchain Worker (This Repo)               │
 │                                                          │
 │  1. Fetch from Queue → 2. Upload to IPFS (Pinata)       │
-│  3. Store on Ethereum → 4. Sync to Pinata DB            │
+│  3. Store on Ethereum → 4. Write tx/block metadata      │
+│  5. Record audits, SLA events, and escalation history    │
 └────┬────────────────┬──────────────────┬────────────────┘
      │                │                  │
      ▼                ▼                  ▼
   ┌──────┐      ┌──────────┐      ┌────────────┐
-  │ IPFS │      │Ethereum  │      │ Pinata DB  │
-  │Pinata│      │Blockchain│      │(Cloud DB)  │
+  │ IPFS │      │Ethereum  │      │ Redis Meta │
+  │Pinata│      │Blockchain│      │  Store     │
   └──────┘      └─────┬────┘      └────────────┘
                       │
                       ▼
@@ -165,7 +170,7 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Clo
 
 * **Pinata Account**
   - JWT token for IPFS uploads
-  - API access for cloud database
+  - API access for IPFS pinning
 
 ### Installation
 
@@ -395,6 +400,67 @@ function registerComplaint(
 - Verify Express is running on port 3000
 - Ensure `curl` is installed in the Docker image
 
+## CI/CD Pipeline
+
+This repository includes a comprehensive **GitHub Actions CI/CD pipeline** for automated testing, building, and deploying to AWS ECS.
+
+### Workflows
+
+| Workflow | Trigger | Purpose |
+| --- | --- | --- |
+| `deploy.yml` | Push/PR to main/develop | Compile, test, build Docker image, deploy to ECS |
+| `security.yml` | Push/PR + daily schedule | NPM audit, Trivy scan, dependency check, Solither analysis |
+| `quality.yml` | Push/PR | TypeScript lint, Prettier format check, test coverage, complexity metrics |
+
+### Setup
+
+Before using the CI/CD pipeline:
+
+1. **Add GitHub Secrets** (Settings → Secrets and variables):
+   - `AWS_ACCESS_KEY_ID` - AWS access key
+   - `AWS_SECRET_ACCESS_KEY` - AWS secret key
+   - `SLACK_WEBHOOK_URL` - (optional) Slack notifications
+
+2. **Create AWS ECR Repository**:
+   ```bash
+   aws ecr create-repository \
+     --repository-name grievance-blockchain-worker \
+     --region us-east-1
+   ```
+
+3. **Configure ECS** - Update `.github/workflows/deploy.yml`:
+   - `AWS_REGION` - Your AWS region
+   - `ECS_CLUSTER` - Your ECS cluster name
+   - `ECS_SERVICE` - Your ECS service name
+
+For detailed setup instructions, see [.github/CI_CD_SETUP.md](.github/CI_CD_SETUP.md)
+
+### Deployment Flow
+
+**On push to `main` branch:**
+
+```
+Tests ✓ → Build Docker Image ✓ → Push to ECR ✓ → Deploy to ECS ✓ → Slack Notification
+```
+
+**On pull request:**
+
+```
+Tests ✓ → Security Scan ✓ → Code Quality ✓ → (requires manual merge)
+```
+
+### Manual Deployment
+
+If needed, manually trigger deployment:
+
+```bash
+aws ecs update-service \
+  --cluster grievance-cluster \
+  --service grievance-blockchain-worker \
+  --force-new-deployment \
+  --region us-east-1
+```
+
 ## Security Best Practices
 
 - 🔒 Never commit private keys to version control
@@ -411,7 +477,7 @@ This worker is part of the SwarajDesk ecosystem:
 1. **User-BE/Admin-BE** pushes complaints to Redis
 2. **Worker** processes queue and stores on blockchain
 3. **Frontend** can verify transactions on Etherscan
-4. **Pinata DB** provides fast query access to blockchain data
+4. **Redis metadata keys** provide fast access to tx hashes, block numbers, and IPFS CIDs
 
 See [SwarajDesk Repository](https://github.com/neutron420/sih-swarajdesk-2025) for complete system documentation.
 

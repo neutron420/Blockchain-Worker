@@ -9,6 +9,7 @@ import type {
   Result,
   Interface,
   EventFragment,
+  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -60,6 +61,72 @@ export declare namespace GrievanceContractOptimized {
     isPublic: boolean;
   };
 
+  export type EscalationRecordStruct = {
+    fromStatus: BigNumberish;
+    toStatus: BigNumberish;
+    escalatedAt: BigNumberish;
+    escalatedBy: AddressLike;
+    reasonHash: BytesLike;
+  };
+
+  export type EscalationRecordStructOutput = [
+    fromStatus: bigint,
+    toStatus: bigint,
+    escalatedAt: bigint,
+    escalatedBy: string,
+    reasonHash: string
+  ] & {
+    fromStatus: bigint;
+    toStatus: bigint;
+    escalatedAt: bigint;
+    escalatedBy: string;
+    reasonHash: string;
+  };
+
+  export type SlaRecordStruct = {
+    expectedBy: BigNumberish;
+    recordedAt: BigNumberish;
+    breachedAt: BigNumberish;
+    breached: boolean;
+    noteHash: BytesLike;
+  };
+
+  export type SlaRecordStructOutput = [
+    expectedBy: bigint,
+    recordedAt: bigint,
+    breachedAt: bigint,
+    breached: boolean,
+    noteHash: string
+  ] & {
+    expectedBy: bigint;
+    recordedAt: bigint;
+    breachedAt: bigint;
+    breached: boolean;
+    noteHash: string;
+  };
+
+  export type StatusAuditEntryStruct = {
+    oldStatus: BigNumberish;
+    newStatus: BigNumberish;
+    changedAt: BigNumberish;
+    changedBy: AddressLike;
+    reasonHash: BytesLike;
+  };
+
+  export type StatusAuditEntryStructOutput = [
+    oldStatus: bigint,
+    newStatus: bigint,
+    changedAt: bigint,
+    changedBy: string,
+    reasonHash: string
+  ] & {
+    oldStatus: bigint;
+    newStatus: bigint;
+    changedAt: bigint;
+    changedBy: string;
+    reasonHash: string;
+  };
+
   export type UserStruct = {
     emailHash: BytesLike;
     aadhaarHash: BytesLike;
@@ -89,33 +156,65 @@ export interface GrievanceContractOptimizedInterface extends Interface {
       | "assignComplaint"
       | "checkComplaintExists"
       | "checkUserExists"
+      | "commitMerkleBatch"
       | "complaintExists"
       | "complaints"
       | "createAuditLog"
+      | "createCivicPriority"
+      | "escalateComplaint"
       | "getComplaint"
+      | "getComplaintEscalationHistory"
+      | "getComplaintSla"
+      | "getComplaintStatusHistory"
+      | "getComplaintVerificationCode"
       | "getCounts"
       | "getUser"
+      | "issueResolutionCertificate"
+      | "markComplaintSlaBreached"
+      | "recordAgentPerformance"
+      | "recordComplaintSla"
+      | "recordDuplicateAssessment"
+      | "registerAnonymousComplaint"
       | "registerComplaint"
       | "registerUser"
       | "resolveComplaint"
       | "totalAuditLogs"
       | "totalComplaints"
+      | "totalMerkleBatches"
       | "totalUsers"
       | "updateComplaintStatus"
+      | "updateComplaintStatusWithReason"
       | "updateUpvoteCount"
+      | "upvoteComplaint"
       | "userExists"
       | "users"
       | "verifyHash"
+      | "verifyMerkleProof"
+      | "voteCivicPriority"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "AgentPerformanceRecorded"
+      | "AnonymousComplaintRegistered"
       | "AuditLogCreated"
+      | "CivicPriorityCreated"
+      | "CivicPriorityVoted"
       | "ComplaintAssigned"
+      | "ComplaintEscalated"
       | "ComplaintLocationStored"
       | "ComplaintRegistered"
       | "ComplaintResolved"
+      | "ComplaintSlaBreached"
+      | "ComplaintSlaRecorded"
+      | "ComplaintStatusAudited"
       | "ComplaintStatusUpdated"
+      | "ComplaintUpvoted"
+      | "ComplaintVerificationCodeCreated"
+      | "CrossDepartmentCorruptionFlagged"
+      | "DuplicateAssessmentRecorded"
+      | "MerkleBatchCommitted"
+      | "ResolutionCertificateIssued"
       | "UpvoteAdded"
       | "UserLocationStored"
       | "UserRegistered"
@@ -134,6 +233,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     values: [string]
   ): string;
   encodeFunctionData(
+    functionFragment: "commitMerkleBatch",
+    values: [BytesLike, BigNumberish, string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "complaintExists",
     values: [BytesLike]
   ): string;
@@ -146,11 +249,74 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     values: [string, string, string, string, string]
   ): string;
   encodeFunctionData(
+    functionFragment: "createCivicPriority",
+    values: [string, BytesLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "escalateComplaint",
+    values: [string, BigNumberish, string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "getComplaint",
+    values: [string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getComplaintEscalationHistory",
+    values: [string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getComplaintSla",
+    values: [string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getComplaintStatusHistory",
+    values: [string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getComplaintVerificationCode",
     values: [string]
   ): string;
   encodeFunctionData(functionFragment: "getCounts", values?: undefined): string;
   encodeFunctionData(functionFragment: "getUser", values: [string]): string;
+  encodeFunctionData(
+    functionFragment: "issueResolutionCertificate",
+    values: [string, string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "markComplaintSlaBreached",
+    values: [string, string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "recordAgentPerformance",
+    values: [string, string, BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "recordComplaintSla",
+    values: [string, BigNumberish, string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "recordDuplicateAssessment",
+    values: [string, BytesLike, BytesLike, BytesLike[], boolean]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "registerAnonymousComplaint",
+    values: [
+      string,
+      BytesLike,
+      string,
+      string,
+      string,
+      BigNumberish,
+      BytesLike,
+      BytesLike,
+      BytesLike,
+      string,
+      string,
+      string,
+      string,
+      string
+    ]
+  ): string;
   encodeFunctionData(
     functionFragment: "registerComplaint",
     values: [
@@ -200,6 +366,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "totalMerkleBatches",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "totalUsers",
     values?: undefined
   ): string;
@@ -208,8 +378,16 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     values: [string, BigNumberish, string]
   ): string;
   encodeFunctionData(
+    functionFragment: "updateComplaintStatusWithReason",
+    values: [string, BigNumberish, string, string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "updateUpvoteCount",
     values: [string, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "upvoteComplaint",
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "userExists",
@@ -219,6 +397,14 @@ export interface GrievanceContractOptimizedInterface extends Interface {
   encodeFunctionData(
     functionFragment: "verifyHash",
     values: [string, BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "verifyMerkleProof",
+    values: [BytesLike, BytesLike, BytesLike[]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "voteCivicPriority",
+    values: [string]
   ): string;
 
   decodeFunctionResult(
@@ -234,6 +420,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "commitMerkleBatch",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "complaintExists",
     data: BytesLike
   ): Result;
@@ -243,11 +433,59 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "createCivicPriority",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "escalateComplaint",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "getComplaint",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getComplaintEscalationHistory",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getComplaintSla",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getComplaintStatusHistory",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getComplaintVerificationCode",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getCounts", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getUser", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "issueResolutionCertificate",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "markComplaintSlaBreached",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "recordAgentPerformance",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "recordComplaintSla",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "recordDuplicateAssessment",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "registerAnonymousComplaint",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "registerComplaint",
     data: BytesLike
@@ -268,18 +506,97 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     functionFragment: "totalComplaints",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "totalMerkleBatches",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "totalUsers", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "updateComplaintStatus",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "updateComplaintStatusWithReason",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "updateUpvoteCount",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "upvoteComplaint",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "userExists", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "users", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "verifyHash", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "verifyMerkleProof",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "voteCivicPriority",
+    data: BytesLike
+  ): Result;
+}
+
+export namespace AgentPerformanceRecordedEvent {
+  export type InputTuple = [
+    agentId: string,
+    complaintId: string,
+    resolvedCount: BigNumberish,
+    escalatedCount: BigNumberish,
+    duplicateFlags: BigNumberish,
+    score: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    agentId: string,
+    complaintId: string,
+    resolvedCount: bigint,
+    escalatedCount: bigint,
+    duplicateFlags: bigint,
+    score: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    agentId: string;
+    complaintId: string;
+    resolvedCount: bigint;
+    escalatedCount: bigint;
+    duplicateFlags: bigint;
+    score: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace AnonymousComplaintRegisteredEvent {
+  export type InputTuple = [
+    complaintId: string,
+    commitmentHash: BytesLike,
+    metadataHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    commitmentHash: string,
+    metadataHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    commitmentHash: string;
+    metadataHash: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace AuditLogCreatedEvent {
@@ -313,6 +630,56 @@ export namespace AuditLogCreatedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace CivicPriorityCreatedEvent {
+  export type InputTuple = [
+    priorityId: string,
+    creatorHash: BytesLike,
+    endsAt: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    priorityId: string,
+    creatorHash: string,
+    endsAt: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    priorityId: string;
+    creatorHash: string;
+    endsAt: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace CivicPriorityVotedEvent {
+  export type InputTuple = [
+    priorityId: string,
+    voter: AddressLike,
+    voteCount: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    priorityId: string,
+    voter: string,
+    voteCount: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    priorityId: string;
+    voter: string;
+    voteCount: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export namespace ComplaintAssignedEvent {
   export type InputTuple = [
     complaintId: string,
@@ -327,6 +694,37 @@ export namespace ComplaintAssignedEvent {
   export interface OutputObject {
     complaintId: string;
     assignedTo: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ComplaintEscalatedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    fromStatus: BigNumberish,
+    toStatus: BigNumberish,
+    escalatedBy: AddressLike,
+    reasonHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    fromStatus: bigint,
+    toStatus: bigint,
+    escalatedBy: string,
+    reasonHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    fromStatus: bigint;
+    toStatus: bigint;
+    escalatedBy: string;
+    reasonHash: string;
     timestamp: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -428,6 +826,90 @@ export namespace ComplaintResolvedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace ComplaintSlaBreachedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    expectedBy: BigNumberish,
+    breachedAt: BigNumberish,
+    noteHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    expectedBy: bigint,
+    breachedAt: bigint,
+    noteHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    expectedBy: bigint;
+    breachedAt: bigint;
+    noteHash: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ComplaintSlaRecordedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    expectedBy: BigNumberish,
+    noteHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    expectedBy: bigint,
+    noteHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    expectedBy: bigint;
+    noteHash: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ComplaintStatusAuditedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    oldStatus: BigNumberish,
+    newStatus: BigNumberish,
+    changedBy: AddressLike,
+    reasonHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    oldStatus: bigint,
+    newStatus: bigint,
+    changedBy: string,
+    reasonHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    oldStatus: bigint;
+    newStatus: bigint;
+    changedBy: string;
+    reasonHash: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export namespace ComplaintStatusUpdatedEvent {
   export type InputTuple = [
     complaintId: string,
@@ -448,6 +930,159 @@ export namespace ComplaintStatusUpdatedEvent {
     oldStatus: bigint;
     newStatus: bigint;
     statusName: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ComplaintUpvotedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    voter: AddressLike,
+    newCount: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    voter: string,
+    newCount: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    voter: string;
+    newCount: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ComplaintVerificationCodeCreatedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    verificationCode: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    verificationCode: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    verificationCode: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace CrossDepartmentCorruptionFlaggedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    reassignmentCount: BigNumberish,
+    departmentHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    reassignmentCount: bigint,
+    departmentHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    reassignmentCount: bigint;
+    departmentHash: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace DuplicateAssessmentRecordedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    leafHash: BytesLike,
+    merkleRoot: BytesLike,
+    isDuplicate: boolean,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    leafHash: string,
+    merkleRoot: string,
+    isDuplicate: boolean,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    leafHash: string;
+    merkleRoot: string;
+    isDuplicate: boolean;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace MerkleBatchCommittedEvent {
+  export type InputTuple = [
+    batchId: BigNumberish,
+    root: BytesLike,
+    batchLabelHash: BytesLike,
+    itemCount: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    batchId: bigint,
+    root: string,
+    batchLabelHash: string,
+    itemCount: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    batchId: bigint;
+    root: string;
+    batchLabelHash: string;
+    itemCount: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ResolutionCertificateIssuedEvent {
+  export type InputTuple = [
+    complaintId: string,
+    recipientId: string,
+    certificateHash: BytesLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    complaintId: string,
+    recipientId: string,
+    certificateHash: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    complaintId: string;
+    recipientId: string;
+    certificateHash: string;
     timestamp: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -603,6 +1238,12 @@ export interface GrievanceContractOptimized extends BaseContract {
 
   checkUserExists: TypedContractMethod<[_userId: string], [boolean], "view">;
 
+  commitMerkleBatch: TypedContractMethod<
+    [_root: BytesLike, _itemCount: BigNumberish, _batchLabel: string],
+    [bigint],
+    "nonpayable"
+  >;
+
   complaintExists: TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
 
   complaints: TypedContractMethod<
@@ -647,9 +1288,45 @@ export interface GrievanceContractOptimized extends BaseContract {
     "nonpayable"
   >;
 
+  createCivicPriority: TypedContractMethod<
+    [_priorityId: string, _creatorHash: BytesLike, _endsAt: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  escalateComplaint: TypedContractMethod<
+    [_complaintId: string, _toStatus: BigNumberish, _reason: string],
+    [void],
+    "nonpayable"
+  >;
+
   getComplaint: TypedContractMethod<
     [_complaintId: string],
     [GrievanceContractOptimized.ComplaintStructOutput],
+    "view"
+  >;
+
+  getComplaintEscalationHistory: TypedContractMethod<
+    [_complaintId: string],
+    [GrievanceContractOptimized.EscalationRecordStructOutput[]],
+    "view"
+  >;
+
+  getComplaintSla: TypedContractMethod<
+    [_complaintId: string],
+    [GrievanceContractOptimized.SlaRecordStructOutput],
+    "view"
+  >;
+
+  getComplaintStatusHistory: TypedContractMethod<
+    [_complaintId: string],
+    [GrievanceContractOptimized.StatusAuditEntryStructOutput[]],
+    "view"
+  >;
+
+  getComplaintVerificationCode: TypedContractMethod<
+    [_complaintId: string],
+    [string],
     "view"
   >;
 
@@ -669,6 +1346,68 @@ export interface GrievanceContractOptimized extends BaseContract {
     [_userId: string],
     [GrievanceContractOptimized.UserStructOutput],
     "view"
+  >;
+
+  issueResolutionCertificate: TypedContractMethod<
+    [_complaintId: string, _recipientId: string],
+    [void],
+    "nonpayable"
+  >;
+
+  markComplaintSlaBreached: TypedContractMethod<
+    [_complaintId: string, _note: string],
+    [void],
+    "nonpayable"
+  >;
+
+  recordAgentPerformance: TypedContractMethod<
+    [
+      _agentId: string,
+      _complaintId: string,
+      _outcomeStatus: BigNumberish,
+      _scoreDelta: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  recordComplaintSla: TypedContractMethod<
+    [_complaintId: string, _expectedBy: BigNumberish, _note: string],
+    [void],
+    "nonpayable"
+  >;
+
+  recordDuplicateAssessment: TypedContractMethod<
+    [
+      _complaintId: string,
+      _leafHash: BytesLike,
+      _merkleRoot: BytesLike,
+      _proof: BytesLike[],
+      _isDuplicate: boolean
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  registerAnonymousComplaint: TypedContractMethod<
+    [
+      _complaintId: string,
+      _identityCommitment: BytesLike,
+      _categoryId: string,
+      _subCategory: string,
+      _department: string,
+      _urgency: BigNumberish,
+      _descriptionHash: BytesLike,
+      _attachmentHash: BytesLike,
+      _locationHash: BytesLike,
+      _pin: string,
+      _district: string,
+      _city: string,
+      _locality: string,
+      _state: string
+    ],
+    [void],
+    "nonpayable"
   >;
 
   registerComplaint: TypedContractMethod<
@@ -721,6 +1460,8 @@ export interface GrievanceContractOptimized extends BaseContract {
 
   totalComplaints: TypedContractMethod<[], [bigint], "view">;
 
+  totalMerkleBatches: TypedContractMethod<[], [bigint], "view">;
+
   totalUsers: TypedContractMethod<[], [bigint], "view">;
 
   updateComplaintStatus: TypedContractMethod<
@@ -729,8 +1470,25 @@ export interface GrievanceContractOptimized extends BaseContract {
     "nonpayable"
   >;
 
+  updateComplaintStatusWithReason: TypedContractMethod<
+    [
+      _complaintId: string,
+      _newStatus: BigNumberish,
+      _statusName: string,
+      _reason: string
+    ],
+    [void],
+    "nonpayable"
+  >;
+
   updateUpvoteCount: TypedContractMethod<
     [_complaintId: string, _newCount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  upvoteComplaint: TypedContractMethod<
+    [_complaintId: string],
     [void],
     "nonpayable"
   >;
@@ -757,6 +1515,18 @@ export interface GrievanceContractOptimized extends BaseContract {
     "view"
   >;
 
+  verifyMerkleProof: TypedContractMethod<
+    [_leaf: BytesLike, _root: BytesLike, _proof: BytesLike[]],
+    [boolean],
+    "view"
+  >;
+
+  voteCivicPriority: TypedContractMethod<
+    [_priorityId: string],
+    [void],
+    "nonpayable"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -774,6 +1544,13 @@ export interface GrievanceContractOptimized extends BaseContract {
   getFunction(
     nameOrSignature: "checkUserExists"
   ): TypedContractMethod<[_userId: string], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "commitMerkleBatch"
+  ): TypedContractMethod<
+    [_root: BytesLike, _itemCount: BigNumberish, _batchLabel: string],
+    [bigint],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "complaintExists"
   ): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
@@ -822,12 +1599,50 @@ export interface GrievanceContractOptimized extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "createCivicPriority"
+  ): TypedContractMethod<
+    [_priorityId: string, _creatorHash: BytesLike, _endsAt: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "escalateComplaint"
+  ): TypedContractMethod<
+    [_complaintId: string, _toStatus: BigNumberish, _reason: string],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "getComplaint"
   ): TypedContractMethod<
     [_complaintId: string],
     [GrievanceContractOptimized.ComplaintStructOutput],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "getComplaintEscalationHistory"
+  ): TypedContractMethod<
+    [_complaintId: string],
+    [GrievanceContractOptimized.EscalationRecordStructOutput[]],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getComplaintSla"
+  ): TypedContractMethod<
+    [_complaintId: string],
+    [GrievanceContractOptimized.SlaRecordStructOutput],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getComplaintStatusHistory"
+  ): TypedContractMethod<
+    [_complaintId: string],
+    [GrievanceContractOptimized.StatusAuditEntryStructOutput[]],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getComplaintVerificationCode"
+  ): TypedContractMethod<[_complaintId: string], [string], "view">;
   getFunction(
     nameOrSignature: "getCounts"
   ): TypedContractMethod<
@@ -847,6 +1662,74 @@ export interface GrievanceContractOptimized extends BaseContract {
     [_userId: string],
     [GrievanceContractOptimized.UserStructOutput],
     "view"
+  >;
+  getFunction(
+    nameOrSignature: "issueResolutionCertificate"
+  ): TypedContractMethod<
+    [_complaintId: string, _recipientId: string],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "markComplaintSlaBreached"
+  ): TypedContractMethod<
+    [_complaintId: string, _note: string],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "recordAgentPerformance"
+  ): TypedContractMethod<
+    [
+      _agentId: string,
+      _complaintId: string,
+      _outcomeStatus: BigNumberish,
+      _scoreDelta: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "recordComplaintSla"
+  ): TypedContractMethod<
+    [_complaintId: string, _expectedBy: BigNumberish, _note: string],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "recordDuplicateAssessment"
+  ): TypedContractMethod<
+    [
+      _complaintId: string,
+      _leafHash: BytesLike,
+      _merkleRoot: BytesLike,
+      _proof: BytesLike[],
+      _isDuplicate: boolean
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "registerAnonymousComplaint"
+  ): TypedContractMethod<
+    [
+      _complaintId: string,
+      _identityCommitment: BytesLike,
+      _categoryId: string,
+      _subCategory: string,
+      _department: string,
+      _urgency: BigNumberish,
+      _descriptionHash: BytesLike,
+      _attachmentHash: BytesLike,
+      _locationHash: BytesLike,
+      _pin: string,
+      _district: string,
+      _city: string,
+      _locality: string,
+      _state: string
+    ],
+    [void],
+    "nonpayable"
   >;
   getFunction(
     nameOrSignature: "registerComplaint"
@@ -900,6 +1783,9 @@ export interface GrievanceContractOptimized extends BaseContract {
     nameOrSignature: "totalComplaints"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
+    nameOrSignature: "totalMerkleBatches"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
     nameOrSignature: "totalUsers"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
@@ -910,12 +1796,27 @@ export interface GrievanceContractOptimized extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "updateComplaintStatusWithReason"
+  ): TypedContractMethod<
+    [
+      _complaintId: string,
+      _newStatus: BigNumberish,
+      _statusName: string,
+      _reason: string
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "updateUpvoteCount"
   ): TypedContractMethod<
     [_complaintId: string, _newCount: BigNumberish],
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "upvoteComplaint"
+  ): TypedContractMethod<[_complaintId: string], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "userExists"
   ): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
@@ -941,7 +1842,31 @@ export interface GrievanceContractOptimized extends BaseContract {
     [boolean],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "verifyMerkleProof"
+  ): TypedContractMethod<
+    [_leaf: BytesLike, _root: BytesLike, _proof: BytesLike[]],
+    [boolean],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "voteCivicPriority"
+  ): TypedContractMethod<[_priorityId: string], [void], "nonpayable">;
 
+  getEvent(
+    key: "AgentPerformanceRecorded"
+  ): TypedContractEvent<
+    AgentPerformanceRecordedEvent.InputTuple,
+    AgentPerformanceRecordedEvent.OutputTuple,
+    AgentPerformanceRecordedEvent.OutputObject
+  >;
+  getEvent(
+    key: "AnonymousComplaintRegistered"
+  ): TypedContractEvent<
+    AnonymousComplaintRegisteredEvent.InputTuple,
+    AnonymousComplaintRegisteredEvent.OutputTuple,
+    AnonymousComplaintRegisteredEvent.OutputObject
+  >;
   getEvent(
     key: "AuditLogCreated"
   ): TypedContractEvent<
@@ -950,11 +1875,32 @@ export interface GrievanceContractOptimized extends BaseContract {
     AuditLogCreatedEvent.OutputObject
   >;
   getEvent(
+    key: "CivicPriorityCreated"
+  ): TypedContractEvent<
+    CivicPriorityCreatedEvent.InputTuple,
+    CivicPriorityCreatedEvent.OutputTuple,
+    CivicPriorityCreatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "CivicPriorityVoted"
+  ): TypedContractEvent<
+    CivicPriorityVotedEvent.InputTuple,
+    CivicPriorityVotedEvent.OutputTuple,
+    CivicPriorityVotedEvent.OutputObject
+  >;
+  getEvent(
     key: "ComplaintAssigned"
   ): TypedContractEvent<
     ComplaintAssignedEvent.InputTuple,
     ComplaintAssignedEvent.OutputTuple,
     ComplaintAssignedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ComplaintEscalated"
+  ): TypedContractEvent<
+    ComplaintEscalatedEvent.InputTuple,
+    ComplaintEscalatedEvent.OutputTuple,
+    ComplaintEscalatedEvent.OutputObject
   >;
   getEvent(
     key: "ComplaintLocationStored"
@@ -978,11 +1924,74 @@ export interface GrievanceContractOptimized extends BaseContract {
     ComplaintResolvedEvent.OutputObject
   >;
   getEvent(
+    key: "ComplaintSlaBreached"
+  ): TypedContractEvent<
+    ComplaintSlaBreachedEvent.InputTuple,
+    ComplaintSlaBreachedEvent.OutputTuple,
+    ComplaintSlaBreachedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ComplaintSlaRecorded"
+  ): TypedContractEvent<
+    ComplaintSlaRecordedEvent.InputTuple,
+    ComplaintSlaRecordedEvent.OutputTuple,
+    ComplaintSlaRecordedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ComplaintStatusAudited"
+  ): TypedContractEvent<
+    ComplaintStatusAuditedEvent.InputTuple,
+    ComplaintStatusAuditedEvent.OutputTuple,
+    ComplaintStatusAuditedEvent.OutputObject
+  >;
+  getEvent(
     key: "ComplaintStatusUpdated"
   ): TypedContractEvent<
     ComplaintStatusUpdatedEvent.InputTuple,
     ComplaintStatusUpdatedEvent.OutputTuple,
     ComplaintStatusUpdatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ComplaintUpvoted"
+  ): TypedContractEvent<
+    ComplaintUpvotedEvent.InputTuple,
+    ComplaintUpvotedEvent.OutputTuple,
+    ComplaintUpvotedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ComplaintVerificationCodeCreated"
+  ): TypedContractEvent<
+    ComplaintVerificationCodeCreatedEvent.InputTuple,
+    ComplaintVerificationCodeCreatedEvent.OutputTuple,
+    ComplaintVerificationCodeCreatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "CrossDepartmentCorruptionFlagged"
+  ): TypedContractEvent<
+    CrossDepartmentCorruptionFlaggedEvent.InputTuple,
+    CrossDepartmentCorruptionFlaggedEvent.OutputTuple,
+    CrossDepartmentCorruptionFlaggedEvent.OutputObject
+  >;
+  getEvent(
+    key: "DuplicateAssessmentRecorded"
+  ): TypedContractEvent<
+    DuplicateAssessmentRecordedEvent.InputTuple,
+    DuplicateAssessmentRecordedEvent.OutputTuple,
+    DuplicateAssessmentRecordedEvent.OutputObject
+  >;
+  getEvent(
+    key: "MerkleBatchCommitted"
+  ): TypedContractEvent<
+    MerkleBatchCommittedEvent.InputTuple,
+    MerkleBatchCommittedEvent.OutputTuple,
+    MerkleBatchCommittedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ResolutionCertificateIssued"
+  ): TypedContractEvent<
+    ResolutionCertificateIssuedEvent.InputTuple,
+    ResolutionCertificateIssuedEvent.OutputTuple,
+    ResolutionCertificateIssuedEvent.OutputObject
   >;
   getEvent(
     key: "UpvoteAdded"
@@ -1007,6 +2016,28 @@ export interface GrievanceContractOptimized extends BaseContract {
   >;
 
   filters: {
+    "AgentPerformanceRecorded(string,string,uint32,uint32,uint32,uint32,uint256)": TypedContractEvent<
+      AgentPerformanceRecordedEvent.InputTuple,
+      AgentPerformanceRecordedEvent.OutputTuple,
+      AgentPerformanceRecordedEvent.OutputObject
+    >;
+    AgentPerformanceRecorded: TypedContractEvent<
+      AgentPerformanceRecordedEvent.InputTuple,
+      AgentPerformanceRecordedEvent.OutputTuple,
+      AgentPerformanceRecordedEvent.OutputObject
+    >;
+
+    "AnonymousComplaintRegistered(string,bytes32,bytes32,uint256)": TypedContractEvent<
+      AnonymousComplaintRegisteredEvent.InputTuple,
+      AnonymousComplaintRegisteredEvent.OutputTuple,
+      AnonymousComplaintRegisteredEvent.OutputObject
+    >;
+    AnonymousComplaintRegistered: TypedContractEvent<
+      AnonymousComplaintRegisteredEvent.InputTuple,
+      AnonymousComplaintRegisteredEvent.OutputTuple,
+      AnonymousComplaintRegisteredEvent.OutputObject
+    >;
+
     "AuditLogCreated(string,string,string,string,string,uint256)": TypedContractEvent<
       AuditLogCreatedEvent.InputTuple,
       AuditLogCreatedEvent.OutputTuple,
@@ -1018,6 +2049,28 @@ export interface GrievanceContractOptimized extends BaseContract {
       AuditLogCreatedEvent.OutputObject
     >;
 
+    "CivicPriorityCreated(string,bytes32,uint64,uint256)": TypedContractEvent<
+      CivicPriorityCreatedEvent.InputTuple,
+      CivicPriorityCreatedEvent.OutputTuple,
+      CivicPriorityCreatedEvent.OutputObject
+    >;
+    CivicPriorityCreated: TypedContractEvent<
+      CivicPriorityCreatedEvent.InputTuple,
+      CivicPriorityCreatedEvent.OutputTuple,
+      CivicPriorityCreatedEvent.OutputObject
+    >;
+
+    "CivicPriorityVoted(string,address,uint32,uint256)": TypedContractEvent<
+      CivicPriorityVotedEvent.InputTuple,
+      CivicPriorityVotedEvent.OutputTuple,
+      CivicPriorityVotedEvent.OutputObject
+    >;
+    CivicPriorityVoted: TypedContractEvent<
+      CivicPriorityVotedEvent.InputTuple,
+      CivicPriorityVotedEvent.OutputTuple,
+      CivicPriorityVotedEvent.OutputObject
+    >;
+
     "ComplaintAssigned(string,string,uint256)": TypedContractEvent<
       ComplaintAssignedEvent.InputTuple,
       ComplaintAssignedEvent.OutputTuple,
@@ -1027,6 +2080,17 @@ export interface GrievanceContractOptimized extends BaseContract {
       ComplaintAssignedEvent.InputTuple,
       ComplaintAssignedEvent.OutputTuple,
       ComplaintAssignedEvent.OutputObject
+    >;
+
+    "ComplaintEscalated(string,uint8,uint8,address,bytes32,uint256)": TypedContractEvent<
+      ComplaintEscalatedEvent.InputTuple,
+      ComplaintEscalatedEvent.OutputTuple,
+      ComplaintEscalatedEvent.OutputObject
+    >;
+    ComplaintEscalated: TypedContractEvent<
+      ComplaintEscalatedEvent.InputTuple,
+      ComplaintEscalatedEvent.OutputTuple,
+      ComplaintEscalatedEvent.OutputObject
     >;
 
     "ComplaintLocationStored(string,string,string,string,string,string,uint256)": TypedContractEvent<
@@ -1062,6 +2126,39 @@ export interface GrievanceContractOptimized extends BaseContract {
       ComplaintResolvedEvent.OutputObject
     >;
 
+    "ComplaintSlaBreached(string,uint64,uint64,bytes32,uint256)": TypedContractEvent<
+      ComplaintSlaBreachedEvent.InputTuple,
+      ComplaintSlaBreachedEvent.OutputTuple,
+      ComplaintSlaBreachedEvent.OutputObject
+    >;
+    ComplaintSlaBreached: TypedContractEvent<
+      ComplaintSlaBreachedEvent.InputTuple,
+      ComplaintSlaBreachedEvent.OutputTuple,
+      ComplaintSlaBreachedEvent.OutputObject
+    >;
+
+    "ComplaintSlaRecorded(string,uint64,bytes32,uint256)": TypedContractEvent<
+      ComplaintSlaRecordedEvent.InputTuple,
+      ComplaintSlaRecordedEvent.OutputTuple,
+      ComplaintSlaRecordedEvent.OutputObject
+    >;
+    ComplaintSlaRecorded: TypedContractEvent<
+      ComplaintSlaRecordedEvent.InputTuple,
+      ComplaintSlaRecordedEvent.OutputTuple,
+      ComplaintSlaRecordedEvent.OutputObject
+    >;
+
+    "ComplaintStatusAudited(string,uint8,uint8,address,bytes32,uint256)": TypedContractEvent<
+      ComplaintStatusAuditedEvent.InputTuple,
+      ComplaintStatusAuditedEvent.OutputTuple,
+      ComplaintStatusAuditedEvent.OutputObject
+    >;
+    ComplaintStatusAudited: TypedContractEvent<
+      ComplaintStatusAuditedEvent.InputTuple,
+      ComplaintStatusAuditedEvent.OutputTuple,
+      ComplaintStatusAuditedEvent.OutputObject
+    >;
+
     "ComplaintStatusUpdated(string,uint8,uint8,string,uint256)": TypedContractEvent<
       ComplaintStatusUpdatedEvent.InputTuple,
       ComplaintStatusUpdatedEvent.OutputTuple,
@@ -1071,6 +2168,72 @@ export interface GrievanceContractOptimized extends BaseContract {
       ComplaintStatusUpdatedEvent.InputTuple,
       ComplaintStatusUpdatedEvent.OutputTuple,
       ComplaintStatusUpdatedEvent.OutputObject
+    >;
+
+    "ComplaintUpvoted(string,address,uint32,uint256)": TypedContractEvent<
+      ComplaintUpvotedEvent.InputTuple,
+      ComplaintUpvotedEvent.OutputTuple,
+      ComplaintUpvotedEvent.OutputObject
+    >;
+    ComplaintUpvoted: TypedContractEvent<
+      ComplaintUpvotedEvent.InputTuple,
+      ComplaintUpvotedEvent.OutputTuple,
+      ComplaintUpvotedEvent.OutputObject
+    >;
+
+    "ComplaintVerificationCodeCreated(string,bytes32,uint256)": TypedContractEvent<
+      ComplaintVerificationCodeCreatedEvent.InputTuple,
+      ComplaintVerificationCodeCreatedEvent.OutputTuple,
+      ComplaintVerificationCodeCreatedEvent.OutputObject
+    >;
+    ComplaintVerificationCodeCreated: TypedContractEvent<
+      ComplaintVerificationCodeCreatedEvent.InputTuple,
+      ComplaintVerificationCodeCreatedEvent.OutputTuple,
+      ComplaintVerificationCodeCreatedEvent.OutputObject
+    >;
+
+    "CrossDepartmentCorruptionFlagged(string,uint32,bytes32,uint256)": TypedContractEvent<
+      CrossDepartmentCorruptionFlaggedEvent.InputTuple,
+      CrossDepartmentCorruptionFlaggedEvent.OutputTuple,
+      CrossDepartmentCorruptionFlaggedEvent.OutputObject
+    >;
+    CrossDepartmentCorruptionFlagged: TypedContractEvent<
+      CrossDepartmentCorruptionFlaggedEvent.InputTuple,
+      CrossDepartmentCorruptionFlaggedEvent.OutputTuple,
+      CrossDepartmentCorruptionFlaggedEvent.OutputObject
+    >;
+
+    "DuplicateAssessmentRecorded(string,bytes32,bytes32,bool,uint256)": TypedContractEvent<
+      DuplicateAssessmentRecordedEvent.InputTuple,
+      DuplicateAssessmentRecordedEvent.OutputTuple,
+      DuplicateAssessmentRecordedEvent.OutputObject
+    >;
+    DuplicateAssessmentRecorded: TypedContractEvent<
+      DuplicateAssessmentRecordedEvent.InputTuple,
+      DuplicateAssessmentRecordedEvent.OutputTuple,
+      DuplicateAssessmentRecordedEvent.OutputObject
+    >;
+
+    "MerkleBatchCommitted(uint256,bytes32,bytes32,uint32,uint256)": TypedContractEvent<
+      MerkleBatchCommittedEvent.InputTuple,
+      MerkleBatchCommittedEvent.OutputTuple,
+      MerkleBatchCommittedEvent.OutputObject
+    >;
+    MerkleBatchCommitted: TypedContractEvent<
+      MerkleBatchCommittedEvent.InputTuple,
+      MerkleBatchCommittedEvent.OutputTuple,
+      MerkleBatchCommittedEvent.OutputObject
+    >;
+
+    "ResolutionCertificateIssued(string,string,bytes32,uint256)": TypedContractEvent<
+      ResolutionCertificateIssuedEvent.InputTuple,
+      ResolutionCertificateIssuedEvent.OutputTuple,
+      ResolutionCertificateIssuedEvent.OutputObject
+    >;
+    ResolutionCertificateIssued: TypedContractEvent<
+      ResolutionCertificateIssuedEvent.InputTuple,
+      ResolutionCertificateIssuedEvent.OutputTuple,
+      ResolutionCertificateIssuedEvent.OutputObject
     >;
 
     "UpvoteAdded(string,uint32,uint256)": TypedContractEvent<

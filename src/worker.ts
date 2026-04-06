@@ -7,7 +7,23 @@ import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import FormData from "form-data";
 
-import GrievanceContractArtifact from "../artifacts/contracts/GrievanceContract.sol/GrievanceContractOptimized.json";
+const GRIEVANCE_CONTRACT_ABI = [
+  "function registerUser(string,string,string,bytes32,bytes32,bytes32,string,string,string,string,string)",
+  "function registerComplaint(string,string,string,string,string,uint8,bytes32,bytes32,bytes32,bool,string,string,string,string,string)",
+  "function registerAnonymousComplaint(string,bytes32,string,string,string,uint8,bytes32,bytes32,bytes32,string,string,string,string,string)",
+  "function updateComplaintStatusWithReason(string,uint8,string,string)",
+  "function recordComplaintSla(string,uint64,string)",
+  "function markComplaintSlaBreached(string,string)",
+  "function escalateComplaint(string,uint8,string)",
+  "function upvoteComplaint(string)",
+  "function recordDuplicateAssessment(string,bytes32,bytes32,bytes32[],bool)",
+  "function recordAgentPerformance(string,string,uint8,uint32)",
+  "function createCivicPriority(string,bytes32,uint64)",
+  "function voteCivicPriority(string)",
+  "function issueResolutionCertificate(string,string)",
+  "function getComplaintVerificationCode(string) view returns (bytes32)",
+  "function commitMerkleBatch(bytes32,uint32,string) returns (uint256)",
+] as const;
 
 const Q_USERS = "user:registration:queue";
 const Q_COMPLAINTS = "complaint:blockchain:queue";
@@ -58,6 +74,8 @@ interface ComplaintQueueData {
   attachmentUrl?: string;
   assignedDepartment: string;
   isPublic: boolean;
+  anonymous?: boolean;
+  identityCommitment?: string;
   location: {
     pin: string;
     district: string;
@@ -68,6 +86,31 @@ interface ComplaintQueueData {
   userId: string;
   submissionDate: string;
   retryCount?: number;
+  statusName?: string;
+  statusReason?: string;
+  slaDueAt?: string | number;
+  slaNote?: string;
+  slaBreachNote?: string;
+  escalateToStatus?: number;
+  escalationReason?: string;
+  upvoteOnChain?: boolean;
+  duplicateLeaf?: string;
+  duplicateMerkleRoot?: string;
+  duplicateProof?: string[];
+  duplicateDecision?: boolean;
+  agentId?: string;
+  agentOutcomeStatus?: number;
+  agentScoreDelta?: number;
+  issueResolutionCertificate?: boolean;
+  resolutionRecipientId?: string;
+  priorityId?: string;
+  priorityCreatorHash?: string;
+  priorityEndsAt?: string | number;
+  votePriority?: boolean;
+  verificationCodeLabel?: string;
+  batchMerkleRoot?: string;
+  batchMerkleLabel?: string;
+  batchItemCount?: number;
 }
 
 class BlockchainWorker {
@@ -91,7 +134,7 @@ class BlockchainWorker {
 
     this.contract = new ethers.Contract(
       process.env.CONTRACT_ADDRESS!,
-      GrievanceContractArtifact.abi,
+      GRIEVANCE_CONTRACT_ABI,
       this.wallet
     );
 
@@ -211,7 +254,9 @@ class BlockchainWorker {
       data.location.municipal
     );
 
-    await tx.wait();
+    const receipt = await tx.wait();
+    await this.storeChainMetadata(`user:${data.id}`, cid, receipt);
+    return receipt;
   }
 
   /** ========== COMPLAINT REGISTRATION ========== */
@@ -247,6 +292,35 @@ class BlockchainWorker {
 
     try {
       await this.registerComplaint(id, data);
+
+      if (data.upvoteOnChain) {
+        await this.upvoteComplaint(id);
+      }
+
+      if (data.duplicateMerkleRoot) {
+        await this.recordDuplicateAssessment(id, data);
+      }
+
+      if (data.agentId) {
+        await this.recordAgentPerformance(id, data);
+      }
+
+      if (data.priorityId) {
+        await this.handleCivicPriority(data);
+      }
+
+      if (data.issueResolutionCertificate) {
+        await this.issueResolutionCertificate(id, data);
+      }
+
+      if (data.verificationCodeLabel) {
+        await this.storeVerificationCode(id, data.verificationCodeLabel);
+      }
+
+      if (data.batchMerkleRoot) {
+        await this.commitMerkleBatch(data);
+      }
+
       console.log("Complaint registered:", id);
     } catch (err: any) {
       console.error("Complaint failed:", err.message);
@@ -301,28 +375,239 @@ class BlockchainWorker {
       state: safeState
     });
 
-    const fn = this.contract.getFunction("registerComplaint");
-    const tx = await fn(
-      id,
-      data.userId,
-      data.categoryId,
-      data.subCategory,
-      data.assignedDepartment,
-      urgency,
-      descHash,
-      attachmentHash,
-      locHash,
-      data.isPublic,
-      safePin,
-      safeDistrict,
-      safeCity,
-      safeLocality,
-      safeState
-    );
+    const isAnonymous = Boolean(data.anonymous || data.identityCommitment);
+    const fnName = isAnonymous ? "registerAnonymousComplaint" : "registerComplaint";
+    const fn = this.contract.getFunction(fnName);
+    const tx = isAnonymous
+      ? await fn(
+          id,
+          data.identityCommitment || ethers.ZeroHash,
+          data.categoryId,
+          data.subCategory,
+          data.assignedDepartment,
+          urgency,
+          descHash,
+          attachmentHash,
+          locHash,
+          safePin,
+          safeDistrict,
+          safeCity,
+          safeLocality,
+          safeState
+        )
+      : await fn(
+          id,
+          data.userId,
+          data.categoryId,
+          data.subCategory,
+          data.assignedDepartment,
+          urgency,
+          descHash,
+          attachmentHash,
+          locHash,
+          data.isPublic,
+          safePin,
+          safeDistrict,
+          safeCity,
+          safeLocality,
+          safeState
+        );
 
     const receipt = await tx.wait();
     console.log(`Complaint registered: ${id} → Block ${receipt.blockNumber}`);
+
+    await this.storeChainMetadata(`complaint:${id}`, cid, receipt);
+
+    if (typeof data.slaDueAt !== "undefined") {
+      await this.recordComplaintSla(id, data);
+    }
+
+    if (typeof data.statusName === "string" && data.statusName.length > 0) {
+      await this.updateComplaintStatus(id, data);
+    }
+
+    if (typeof data.escalateToStatus === "number") {
+      await this.escalateComplaint(id, data);
+    }
+
     return receipt;
+  }
+
+  private async upvoteComplaint(id: string) {
+    const fn = this.contract.getFunction("upvoteComplaint");
+    const tx = await fn(id);
+    const receipt = await tx.wait();
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+  }
+
+  private async recordDuplicateAssessment(id: string, data: ComplaintQueueData) {
+    const leafHash = data.duplicateLeaf || this.buildComplaintLeafHash(id, data);
+    const merkleRoot = data.duplicateMerkleRoot as string;
+    const proof = data.duplicateProof || [];
+    const isDuplicate = Boolean(data.duplicateDecision);
+
+    const fn = this.contract.getFunction("recordDuplicateAssessment");
+    const tx = await fn(id, leafHash, merkleRoot, proof, isDuplicate);
+    const receipt = await tx.wait();
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+  }
+
+  private async recordAgentPerformance(id: string, data: ComplaintQueueData) {
+    const fn = this.contract.getFunction("recordAgentPerformance");
+    const outcomeStatus = data.agentOutcomeStatus || STATUS_MAP.COMPLETED;
+    const scoreDelta = data.agentScoreDelta ?? 1;
+    const tx = await fn(data.agentId, id, outcomeStatus, scoreDelta);
+    const receipt = await tx.wait();
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+  }
+
+  private async handleCivicPriority(data: ComplaintQueueData) {
+    const priorityId = data.priorityId!;
+    const endsAtSource = data.priorityEndsAt ?? Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const endsAt = this.normalizeUnixTime(endsAtSource);
+
+    if (data.priorityCreatorHash) {
+      const createFn = this.contract.getFunction("createCivicPriority");
+      const tx = await createFn(priorityId, data.priorityCreatorHash, endsAt);
+      const receipt = await tx.wait();
+      await this.storeChainMetadata(`priority:${priorityId}`, undefined, receipt);
+    }
+
+    if (data.votePriority) {
+      const voteFn = this.contract.getFunction("voteCivicPriority");
+      const tx = await voteFn(priorityId);
+      const receipt = await tx.wait();
+      await this.storeChainMetadata(`priority:${priorityId}`, undefined, receipt);
+    }
+  }
+
+  private async issueResolutionCertificate(id: string, data: ComplaintQueueData) {
+    const recipientId = data.resolutionRecipientId || data.userId;
+    const fn = this.contract.getFunction("issueResolutionCertificate");
+    const tx = await fn(id, recipientId);
+    const receipt = await tx.wait();
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+  }
+
+  private async storeVerificationCode(id: string, label: string) {
+    const fn = this.contract.getFunction("getComplaintVerificationCode");
+    const code = await fn(id);
+    await this.redis.set(`complaint:${id}:verification:${label}`, code.toString());
+  }
+
+  private async commitMerkleBatch(data: ComplaintQueueData) {
+    const fn = this.contract.getFunction("commitMerkleBatch");
+    const tx = await fn(
+      data.batchMerkleRoot,
+      data.batchItemCount || 1,
+      data.batchMerkleLabel || "weekly-commitment"
+    );
+    const receipt = await tx.wait();
+    await this.storeChainMetadata(`batch:${data.batchMerkleLabel || "weekly-commitment"}`, undefined, receipt);
+  }
+
+  private buildComplaintLeafHash(id: string, data: ComplaintQueueData): string {
+    const source = JSON.stringify({
+      id,
+      categoryId: data.categoryId,
+      subCategory: data.subCategory,
+      description: data.description,
+      urgency: data.urgency || "MEDIUM",
+      department: data.assignedDepartment,
+      userId: data.userId,
+      submissionDate: data.submissionDate,
+      pin: data.location.pin,
+      district: data.location.district,
+      city: data.location.city,
+      locality: data.location.locality || "",
+      state: data.location.state,
+    });
+
+    return ethers.keccak256(ethers.toUtf8Bytes(source));
+  }
+
+  private async updateComplaintStatus(id: string, data: ComplaintQueueData) {
+    const statusName = data.statusName || "UNDER_PROCESSING";
+    const statusCode = STATUS_MAP[statusName] || STATUS_MAP.UNDER_PROCESSING;
+    const reason = data.statusReason || statusName;
+
+    const fn = this.contract.getFunction("updateComplaintStatusWithReason");
+    const tx = await fn(id, statusCode, statusName, reason);
+    const receipt = await tx.wait();
+
+    console.log(`Complaint status updated: ${id} → ${statusName}`);
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+  }
+
+  private async recordComplaintSla(id: string, data: ComplaintQueueData) {
+    const expectedBySource = data.slaDueAt ?? Date.now();
+    const expectedBy = this.normalizeUnixTime(expectedBySource);
+    const note = data.slaNote || `SLA recorded for ${id}`;
+    const fn = this.contract.getFunction("recordComplaintSla");
+    const tx = await fn(id, expectedBy, note);
+    const receipt = await tx.wait();
+
+    console.log(`Complaint SLA recorded: ${id} → ${expectedBy.toString()}`);
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+
+    if (data.slaBreachNote) {
+      const breachFn = this.contract.getFunction("markComplaintSlaBreached");
+      const breachTx = await breachFn(id, data.slaBreachNote);
+      const breachReceipt = await breachTx.wait();
+      console.log(`Complaint SLA breach recorded: ${id}`);
+      await this.storeChainMetadata(`complaint:${id}`, undefined, breachReceipt);
+    }
+  }
+
+  private async escalateComplaint(id: string, data: ComplaintQueueData) {
+    const escalateToStatus = data.escalateToStatus;
+    if (typeof escalateToStatus !== "number") {
+      return;
+    }
+
+    const reason = data.escalationReason || `Escalated to status ${escalateToStatus}`;
+    const fn = this.contract.getFunction("escalateComplaint");
+    const tx = await fn(id, escalateToStatus, reason);
+    const receipt = await tx.wait();
+
+    console.log(`Complaint escalated: ${id} → ${escalateToStatus}`);
+    await this.storeChainMetadata(`complaint:${id}`, undefined, receipt);
+  }
+
+  private async storeChainMetadata(
+    keyPrefix: string,
+    cid: string | undefined,
+    receipt: ethers.TransactionReceipt
+  ) {
+    const updates: Record<string, string> = {
+      [`${keyPrefix}:txhash`]: receipt.hash,
+      [`${keyPrefix}:block`]: receipt.blockNumber.toString(),
+      [`${keyPrefix}:isOnChain`]: "true",
+    };
+
+    if (cid) {
+      updates[`${keyPrefix}:cid`] = cid;
+    }
+
+    await this.redis.mset(updates);
+  }
+
+  private normalizeUnixTime(value: string | number): bigint {
+    if (typeof value === "number") {
+      return BigInt(Math.floor(value > 1_000_000_000_000 ? value / 1000 : value));
+    }
+
+    const parsedNumber = Number(value);
+    if (!Number.isNaN(parsedNumber) && parsedNumber > 0) {
+      return BigInt(Math.floor(parsedNumber > 1_000_000_000_000 ? parsedNumber / 1000 : parsedNumber));
+    }
+
+    const parsedDate = Date.parse(value);
+    if (Number.isNaN(parsedDate)) {
+      throw new Error(`Invalid SLA deadline: ${value}`);
+    }
+
+    return BigInt(Math.floor(parsedDate / 1000));
   }
 
   private sleep(ms: number) {

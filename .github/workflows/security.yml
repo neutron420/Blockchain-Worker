@@ -1,0 +1,123 @@
+# name: Security Scanning
+
+# on:
+#   push:
+#     branches:
+#       - main
+#       - develop
+#   pull_request:
+#     branches:
+#       - main
+#       - develop
+#   schedule:
+#     # Run daily at 2 AM UTC
+#     - cron: '0 2 * * *'
+
+# jobs:
+#   security-audit:
+#     name: NPM Security Audit
+#     runs-on: ubuntu-latest
+    
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+        
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '18'
+#           cache: 'npm'
+          
+#       - name: Install dependencies
+#         run: npm ci
+        
+#       - name: Run npm security audit
+#         run: npm audit --audit-level=moderate
+#         continue-on-error: true
+        
+#       - name: Display audit report
+#         if: always()
+#         run: npm audit
+#         continue-on-error: true
+        
+#   docker-scan:
+#     name: Scan Docker Image for Vulnerabilities
+#     runs-on: ubuntu-latest
+    
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+        
+#       - name: Setup Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+        
+#       - name: Build Docker image for scanning
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: .
+#           push: false
+#           load: true
+#           tags: grievance-blockchain-worker:scan
+          
+#       - name: Run Trivy vulnerability scanner
+#         uses: aquasecurity/trivy-action@master
+#         with:
+#           image-ref: grievance-blockchain-worker:scan
+#           format: 'sarif'
+#           output: 'trivy-results.sarif'
+#           severity: 'CRITICAL,HIGH'
+          
+#       - name: Upload Trivy results to GitHub Security tab
+#         uses: github/codeql-action/upload-sarif@v2
+#         if: always()
+#         with:
+#           sarif_file: 'trivy-results.sarif'
+          
+#   dependency-check:
+#     name: Check for Outdated Dependencies
+#     runs-on: ubuntu-latest
+    
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+        
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '18'
+#           cache: 'npm'
+          
+#       - name: Install dependencies
+#         run: npm ci
+        
+#       - name: Check outdated packages
+#         run: npm outdated
+#         continue-on-error: true
+        
+#   solidity-security:
+#     name: Solidity Security Analysis
+#     runs-on: ubuntu-latest
+    
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+        
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '18'
+#           cache: 'npm'
+          
+#       - name: Install dependencies
+#         run: npm ci
+        
+#       - name: Run Solidity linter (Slither)
+#         uses: crytic/slither-action@v0.3
+#         with:
+#           node-version: 18
+#           solc-version: 0.8.19
+#           fail-on: 'all'
+#         continue-on-error: true
+        
+#       - name: Compile Solidity
+#         run: npm run compile
