@@ -177,6 +177,72 @@ describe("GrievanceContractOptimized", function () {
         )
       ).to.be.revertedWith("Complaint already exists");
     });
+
+    it("Should require anonymous proof verification when verifier is configured", async function () {
+      const complaintId = "ANON-003";
+      const identityCommitment = ethers.id("secret-identity-verified");
+      const MockVerifier = await ethers.getContractFactory("MockAnonymousProofVerifier");
+      const verifier = await MockVerifier.deploy();
+      await verifier.waitForDeployment();
+
+      await contract.setAnonymousProofVerifier(await verifier.getAddress());
+
+      await expect(
+        contract.registerAnonymousComplaint(
+          complaintId,
+          identityCommitment,
+          "PWD",
+          "Pothole",
+          "DEPT-PWD",
+          2,
+          ethers.id("description"),
+          ethers.id("attachment"),
+          ethers.id("location"),
+          "560001",
+          "Bangalore",
+          "Bangalore",
+          "MG Road",
+          "Karnataka"
+        )
+      ).to.be.revertedWith("Anonymous proof not verified");
+
+      await expect(
+        contract.verifyAnonymousIdentityProof(identityCommitment, "0x1234")
+      ).to.not.be.reverted;
+
+      await expect(
+        contract.registerAnonymousComplaint(
+          complaintId,
+          identityCommitment,
+          "PWD",
+          "Pothole",
+          "DEPT-PWD",
+          2,
+          ethers.id("description"),
+          ethers.id("attachment"),
+          ethers.id("location"),
+          "560001",
+          "Bangalore",
+          "Bangalore",
+          "MG Road",
+          "Karnataka"
+        )
+      ).to.not.be.reverted;
+    });
+
+    it("Should reject invalid anonymous proof when verifier returns false", async function () {
+      const identityCommitment = ethers.id("secret-identity-invalid-proof");
+      const MockVerifier = await ethers.getContractFactory("MockAnonymousProofVerifier");
+      const verifier = await MockVerifier.deploy();
+      await verifier.waitForDeployment();
+
+      await contract.setAnonymousProofVerifier(await verifier.getAddress());
+      await verifier.setShouldVerify(false);
+
+      await expect(
+        contract.verifyAnonymousIdentityProof(identityCommitment, "0x1234")
+      ).to.be.revertedWith("Invalid anonymous proof");
+    });
   });
 
   describe("Assign Complaint", function () {
@@ -683,6 +749,128 @@ describe("GrievanceContractOptimized", function () {
       await expect(
         contract.registerUser(...params)
       ).to.be.revertedWith("User already exists");
+    });
+  });
+
+  describe("Authorization Controls", function () {
+    it("Should block non-authorized operator for sensitive actions", async function () {
+      const complaintId = "COMP-AUTH-001";
+
+      await contract.registerComplaint(
+        complaintId,
+        owner.address,
+        "PWD",
+        "Pothole",
+        "DEPT-PWD",
+        2,
+        ethers.id("desc"),
+        ethers.id("attach"),
+        ethers.id("loc"),
+        true,
+        "560001",
+        "Bangalore",
+        "Bangalore",
+        "MG Road",
+        "Karnataka"
+      );
+
+      await expect(
+        contract.connect(citizen).recordComplaintSla(complaintId, Math.floor(Date.now() / 1000) + 3600, "SLA")
+      ).to.be.revertedWith("Not authorized operator");
+    });
+
+    it("Should allow owner to authorize another operator", async function () {
+      const complaintId = "COMP-AUTH-002";
+
+      await contract.registerComplaint(
+        complaintId,
+        owner.address,
+        "PWD",
+        "Pothole",
+        "DEPT-PWD",
+        2,
+        ethers.id("desc"),
+        ethers.id("attach"),
+        ethers.id("loc"),
+        true,
+        "560001",
+        "Bangalore",
+        "Bangalore",
+        "MG Road",
+        "Karnataka"
+      );
+
+      await contract.setAuthorizedOperator(citizen.address, true);
+
+      await expect(
+        contract.connect(citizen).recordComplaintSla(complaintId, Math.floor(Date.now() / 1000) + 3600, "SLA")
+      ).to.not.be.reverted;
+    });
+  });
+
+  describe("Verification and Certificates", function () {
+    it("Should emit complaint verification code event", async function () {
+      const complaintId = "COMP-VER-001";
+
+      await contract.registerComplaint(
+        complaintId,
+        owner.address,
+        "PWD",
+        "Pothole",
+        "DEPT-PWD",
+        2,
+        ethers.id("desc"),
+        ethers.id("attach"),
+        ethers.id("loc"),
+        true,
+        "560001",
+        "Bangalore",
+        "Bangalore",
+        "MG Road",
+        "Karnataka"
+      );
+
+      await expect(contract.emitComplaintVerificationCode(complaintId))
+        .to.emit(contract, "ComplaintVerificationCodeCreated");
+    });
+
+    it("Should mint and expose resolution certificate token record", async function () {
+      const complaintId = "COMP-CERT-001";
+
+      await contract.registerComplaint(
+        complaintId,
+        owner.address,
+        "PWD",
+        "Pothole",
+        "DEPT-PWD",
+        2,
+        ethers.id("desc"),
+        ethers.id("attach"),
+        ethers.id("loc"),
+        true,
+        "560001",
+        "Bangalore",
+        "Bangalore",
+        "MG Road",
+        "Karnataka"
+      );
+
+      await contract.assignComplaint(complaintId, "DEPT-PWD");
+      await contract.resolveComplaint(complaintId);
+
+      await contract.issueResolutionCertificateToWallet(
+        complaintId,
+        "USER-123",
+        citizen.address,
+        "ipfs://certificate-metadata"
+      );
+
+      const tokenId = await contract.getResolutionCertificateTokenByComplaint(complaintId);
+      expect(tokenId).to.equal(1);
+
+      const cert = await contract.getResolutionCertificate(tokenId);
+      expect(cert.recipientWallet).to.equal(citizen.address);
+      expect(cert.tokenUri).to.equal("ipfs://certificate-metadata");
     });
   });
 });

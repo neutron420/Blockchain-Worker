@@ -17,6 +17,22 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+locals {
+  required_secret_arns = [
+    var.blockchain_rpc_url_secret_arn,
+    var.private_key_secret_arn,
+    var.redis_url_secret_arn,
+    var.pinata_api_key_secret_arn,
+    var.pinata_api_secret_secret_arn,
+    var.pinata_jwt_secret_arn,
+  ]
+
+  all_secret_arns = compact(concat(
+    local.required_secret_arns,
+    var.backend_sync_token_secret_arn != "" ? [var.backend_sync_token_secret_arn] : []
+  ))
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
@@ -150,6 +166,32 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  count = length(local.all_secret_arns) > 0 ? 1 : 0
+  name  = "${var.app_name}-ecs-execution-secrets"
+  role  = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+        ]
+        Resource = local.all_secret_arns
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+        ]
+        Resource = "*"
+      },
+    ]
+  })
+}
+
 resource "aws_iam_role" "ecs_task" {
   name = "${var.app_name}-ecs-task-role"
 
@@ -214,16 +256,33 @@ resource "aws_ecs_task_definition" "app" {
 
       environment = [
         { name = "PORT", value = "3000" },
-        { name = "BLOCKCHAIN_RPC_URL", value = var.blockchain_rpc_url },
-        { name = "PRIVATE_KEY", value = var.private_key },
         { name = "CONTRACT_ADDRESS", value = var.contract_address },
         { name = "WORKER_POLL_INTERVAL", value = var.worker_poll_interval },
+        { name = "MAX_RETRIES", value = var.max_retries },
+        { name = "MAX_TX_RETRIES", value = var.max_tx_retries },
+        { name = "BASE_RETRY_DELAY_MS", value = var.base_retry_delay_ms },
+        { name = "MAX_RETRY_DELAY_MS", value = var.max_retry_delay_ms },
+        { name = "USER_QUEUE_NAME", value = var.user_queue_name },
+        { name = "COMPLAINT_QUEUE_NAME", value = var.complaint_queue_name },
+        { name = "METADATA_SYNC_QUEUE", value = var.metadata_sync_queue },
+        { name = "BACKEND_SYNC_URL", value = var.backend_sync_url },
+        { name = "EMIT_VERIFICATION_CODE_TX", value = var.emit_verification_code_tx },
         { name = "QUEUE_NAME", value = var.queue_name },
-        { name = "REDIS_URL", value = var.redis_url },
-        { name = "PINATA_API_KEY", value = var.pinata_api_key },
-        { name = "PINATA_API_SECRET", value = var.pinata_api_secret },
-        { name = "PINATA_JWT", value = var.pinata_jwt },
       ]
+
+      secrets = concat(
+        [
+          { name = "BLOCKCHAIN_RPC_URL", valueFrom = var.blockchain_rpc_url_secret_arn },
+          { name = "PRIVATE_KEY", valueFrom = var.private_key_secret_arn },
+          { name = "REDIS_URL", valueFrom = var.redis_url_secret_arn },
+          { name = "PINATA_API_KEY", valueFrom = var.pinata_api_key_secret_arn },
+          { name = "PINATA_API_SECRET", valueFrom = var.pinata_api_secret_secret_arn },
+          { name = "PINATA_JWT", valueFrom = var.pinata_jwt_secret_arn },
+        ],
+        var.backend_sync_token_secret_arn != "" ? [
+          { name = "BACKEND_SYNC_TOKEN", valueFrom = var.backend_sync_token_secret_arn },
+        ] : []
+      )
 
       logConfiguration = {
         logDriver = "awslogs"

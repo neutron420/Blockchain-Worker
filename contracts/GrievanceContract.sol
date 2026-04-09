@@ -1,12 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+interface IAnonymousProofVerifier {
+    function verifyProof(bytes calldata proof, bytes32 identityCommitment) external view returns (bool);
+}
+
 /**
  * @title GrievanceContractOptimized
  * @dev Gas-optimized version with reduced storage
  * Stores only critical data on-chain, full details in events
  */
 contract GrievanceContractOptimized {
+    address public owner;
+    address public anonymousProofVerifier;
+    mapping(address => bool) public authorizedOperators;
+    mapping(bytes32 => bool) public anonymousIdentityProofVerified;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner");
+        _;
+    }
+
+    modifier onlyAuthorizedOperator() {
+        require(authorizedOperators[msg.sender], "Not authorized operator");
+        _;
+    }
     
     // Location structure for users and complaints
     struct Location {
@@ -113,12 +131,40 @@ contract GrievanceContractOptimized {
     mapping(bytes32 => CivicPriority) private civicPriorityRecords;
     mapping(bytes32 => mapping(address => bool)) private civicPriorityVotes;
     mapping(uint256 => MerkleCommitment) private merkleCommitments;
+    mapping(uint256 => address) private resolutionCertificateOwners;
+    mapping(uint256 => bytes32) private resolutionCertificateRecipientHashes;
+    mapping(uint256 => string) private resolutionCertificateUris;
+    mapping(bytes32 => uint256) private resolutionCertificateByComplaint;
     
     // Counters
     uint256 public totalUsers;
     uint256 public totalComplaints;
     uint256 public totalAuditLogs;
     uint256 public totalMerkleBatches;
+    uint256 public totalResolutionCertificates;
+
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner,
+        uint256 timestamp
+    );
+
+    event AuthorizedOperatorUpdated(
+        address indexed operator,
+        bool isAuthorized,
+        uint256 timestamp
+    );
+
+    event AnonymousProofVerifierUpdated(
+        address indexed verifier,
+        uint256 timestamp
+    );
+
+    event AnonymousIdentityProofVerified(
+        bytes32 indexed identityCommitment,
+        address indexed verifiedBy,
+        uint256 timestamp
+    );
     
     // Events store full data (cheaper than storage)
     event UserRegistered(
@@ -268,6 +314,15 @@ contract GrievanceContractOptimized {
         uint256 timestamp
     );
 
+    event ResolutionCertificateMinted(
+        uint256 indexed tokenId,
+        string indexed complaintId,
+        string indexed recipientId,
+        address recipientWallet,
+        string tokenUri,
+        uint256 timestamp
+    );
+
     event ComplaintVerificationCodeCreated(
         string indexed complaintId,
         bytes32 verificationCode,
@@ -307,6 +362,58 @@ contract GrievanceContractOptimized {
         uint32 newCount,
         uint256 timestamp
     );
+
+    constructor() {
+        owner = msg.sender;
+        authorizedOperators[msg.sender] = true;
+
+        emit OwnershipTransferred(address(0), msg.sender, block.timestamp);
+        emit AuthorizedOperatorUpdated(msg.sender, true, block.timestamp);
+    }
+
+    function transferOwnership(address _newOwner) external onlyOwner {
+        require(_newOwner != address(0), "Invalid owner");
+
+        address previousOwner = owner;
+        owner = _newOwner;
+        authorizedOperators[_newOwner] = true;
+
+        emit OwnershipTransferred(previousOwner, _newOwner, block.timestamp);
+        emit AuthorizedOperatorUpdated(_newOwner, true, block.timestamp);
+    }
+
+    function setAuthorizedOperator(address _operator, bool _isAuthorized) external onlyOwner {
+        require(_operator != address(0), "Invalid operator");
+
+        authorizedOperators[_operator] = _isAuthorized;
+        emit AuthorizedOperatorUpdated(_operator, _isAuthorized, block.timestamp);
+    }
+
+    function setAnonymousProofVerifier(address _verifier) external onlyOwner {
+        anonymousProofVerifier = _verifier;
+        emit AnonymousProofVerifierUpdated(_verifier, block.timestamp);
+    }
+
+    function verifyAnonymousIdentityProof(bytes32 _identityCommitment, bytes calldata _proof)
+        external
+        onlyAuthorizedOperator
+        returns (bool)
+    {
+        require(_identityCommitment != bytes32(0), "Invalid commitment");
+        require(_proof.length > 0, "Invalid proof");
+        require(anonymousProofVerifier != address(0), "Verifier not set");
+        require(!anonymousIdentityProofVerified[_identityCommitment], "Proof already verified");
+
+        bool isValid = IAnonymousProofVerifier(anonymousProofVerifier).verifyProof(
+            _proof,
+            _identityCommitment
+        );
+        require(isValid, "Invalid anonymous proof");
+
+        anonymousIdentityProofVerified[_identityCommitment] = true;
+        emit AnonymousIdentityProofVerified(_identityCommitment, msg.sender, block.timestamp);
+        return true;
+    }
     
     /**
      * @dev Register a new user with location
@@ -324,7 +431,7 @@ contract GrievanceContractOptimized {
         string calldata _city,
         string calldata _state,
         string calldata _municipal
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 userIdHash = keccak256(bytes(_userId));
         require(!userExists[userIdHash], "User already exists");
         
@@ -380,7 +487,7 @@ contract GrievanceContractOptimized {
         string calldata _city,
         string calldata _locality,
         string calldata _state
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(!complaintExists[complaintIdHash], "Complaint already exists");
         require(_urgency >= 1 && _urgency <= 4, "Invalid urgency");
@@ -449,10 +556,52 @@ contract GrievanceContractOptimized {
         string calldata _city,
         string calldata _locality,
         string calldata _state
-    ) external {
+    ) external onlyAuthorizedOperator {
+        _registerAnonymousComplaint(
+            _complaintId,
+            _identityCommitment,
+            _categoryId,
+            _subCategory,
+            _department,
+            _urgency,
+            _descriptionHash,
+            _attachmentHash,
+            _locationHash,
+            _pin,
+            _district,
+            _city,
+            _locality,
+            _state
+        );
+    }
+
+    function _registerAnonymousComplaint(
+        string calldata _complaintId,
+        bytes32 _identityCommitment,
+        string calldata _categoryId,
+        string calldata _subCategory,
+        string calldata _department,
+        uint8 _urgency,
+        bytes32 _descriptionHash,
+        bytes32 _attachmentHash,
+        bytes32 _locationHash,
+        string calldata _pin,
+        string calldata _district,
+        string calldata _city,
+        string calldata _locality,
+        string calldata _state
+    ) internal {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(!complaintExists[complaintIdHash], "Complaint already exists");
         require(_urgency >= 1 && _urgency <= 4, "Invalid urgency");
+        require(_identityCommitment != bytes32(0), "Invalid commitment");
+
+        if (anonymousProofVerifier != address(0)) {
+            require(
+                anonymousIdentityProofVerified[_identityCommitment],
+                "Anonymous proof not verified"
+            );
+        }
 
         complaints[complaintIdHash] = Complaint({
             complainantIdHash: _identityCommitment,
@@ -516,7 +665,7 @@ contract GrievanceContractOptimized {
         string calldata _complaintId,
         uint8 _newStatus,
         string calldata _statusName
-    ) external {
+    ) external onlyAuthorizedOperator {
         _updateComplaintStatus(_complaintId, _newStatus, _statusName, string(""));
     }
 
@@ -525,7 +674,7 @@ contract GrievanceContractOptimized {
         uint8 _newStatus,
         string calldata _statusName,
         string calldata _reason
-    ) external {
+    ) external onlyAuthorizedOperator {
         _updateComplaintStatus(_complaintId, _newStatus, _statusName, _reason);
     }
 
@@ -572,7 +721,7 @@ contract GrievanceContractOptimized {
         string calldata _complaintId,
         uint64 _expectedBy,
         string calldata _note
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         require(_expectedBy > 0, "Invalid SLA deadline");
@@ -596,7 +745,7 @@ contract GrievanceContractOptimized {
     function markComplaintSlaBreached(
         string calldata _complaintId,
         string calldata _note
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
 
@@ -620,7 +769,7 @@ contract GrievanceContractOptimized {
         string calldata _complaintId,
         uint8 _toStatus,
         string calldata _reason
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         require(_toStatus >= 1 && _toStatus <= 9, "Invalid status");
@@ -660,7 +809,7 @@ contract GrievanceContractOptimized {
     function assignComplaint(
         string calldata _complaintId,
         string calldata _assignedTo
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
 
@@ -689,7 +838,7 @@ contract GrievanceContractOptimized {
     /**
      * @dev Resolve complaint
      */
-    function resolveComplaint(string calldata _complaintId) external {
+    function resolveComplaint(string calldata _complaintId) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         
@@ -735,7 +884,7 @@ contract GrievanceContractOptimized {
         bytes32 _merkleRoot,
         bytes32[] calldata _proof,
         bool _isDuplicate
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         require(verifyMerkleProof(_leafHash, _merkleRoot, _proof), "Invalid Merkle proof");
@@ -762,7 +911,7 @@ contract GrievanceContractOptimized {
         string calldata _complaintId,
         uint8 _outcomeStatus,
         uint32 _scoreDelta
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 agentIdHash = keccak256(bytes(_agentId));
         require(complaintExists[keccak256(bytes(_complaintId))], "Complaint does not exist");
 
@@ -796,7 +945,7 @@ contract GrievanceContractOptimized {
         string calldata _priorityId,
         bytes32 _creatorHash,
         uint64 _endsAt
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 priorityHash = keccak256(bytes(_priorityId));
         require(!civicPriorityRecords[priorityHash].active, "Priority exists");
         require(_endsAt > block.timestamp, "Invalid end time");
@@ -828,7 +977,25 @@ contract GrievanceContractOptimized {
     function issueResolutionCertificate(
         string calldata _complaintId,
         string calldata _recipientId
-    ) external {
+    ) external onlyAuthorizedOperator {
+        _issueResolutionCertificate(_complaintId, _recipientId, msg.sender, "");
+    }
+
+    function issueResolutionCertificateToWallet(
+        string calldata _complaintId,
+        string calldata _recipientId,
+        address _recipientWallet,
+        string calldata _tokenUri
+    ) external onlyAuthorizedOperator returns (uint256) {
+        return _issueResolutionCertificate(_complaintId, _recipientId, _recipientWallet, _tokenUri);
+    }
+
+    function _issueResolutionCertificate(
+        string memory _complaintId,
+        string memory _recipientId,
+        address _recipientWallet,
+        string memory _tokenUri
+    ) internal returns (uint256) {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         require(!resolutionCertificatesIssued[complaintIdHash], "Certificate already issued");
@@ -837,10 +1004,19 @@ contract GrievanceContractOptimized {
         require(complaint.statusCode == 5, "Complaint not resolved");
 
         resolutionCertificatesIssued[complaintIdHash] = true;
+        address recipientWallet = _recipientWallet == address(0) ? msg.sender : _recipientWallet;
 
         bytes32 certificateHash = keccak256(
             abi.encodePacked(_complaintId, _recipientId, complaint.lastUpdated, block.timestamp)
         );
+
+        uint256 tokenId = totalResolutionCertificates + 1;
+        totalResolutionCertificates = tokenId;
+
+        resolutionCertificateOwners[tokenId] = recipientWallet;
+        resolutionCertificateRecipientHashes[tokenId] = keccak256(bytes(_recipientId));
+        resolutionCertificateUris[tokenId] = _tokenUri;
+        resolutionCertificateByComplaint[complaintIdHash] = tokenId;
 
         emit ResolutionCertificateIssued(
             _complaintId,
@@ -848,10 +1024,39 @@ contract GrievanceContractOptimized {
             certificateHash,
             block.timestamp
         );
+
+        emit ResolutionCertificateMinted(
+            tokenId,
+            _complaintId,
+            _recipientId,
+            recipientWallet,
+            _tokenUri,
+            block.timestamp
+        );
+
+        return tokenId;
+    }
+
+    function emitComplaintVerificationCode(string calldata _complaintId)
+        external
+        onlyAuthorizedOperator
+        returns (bytes32)
+    {
+        bytes32 verificationCode = _computeComplaintVerificationCode(_complaintId);
+        emit ComplaintVerificationCodeCreated(_complaintId, verificationCode, block.timestamp);
+        return verificationCode;
     }
 
     function getComplaintVerificationCode(string calldata _complaintId)
         external
+        view
+        returns (bytes32)
+    {
+        return _computeComplaintVerificationCode(_complaintId);
+    }
+
+    function _computeComplaintVerificationCode(string memory _complaintId)
+        internal
         view
         returns (bytes32)
     {
@@ -876,7 +1081,7 @@ contract GrievanceContractOptimized {
         bytes32 _root,
         uint32 _itemCount,
         string calldata _batchLabel
-    ) external returns (uint256) {
+    ) external onlyAuthorizedOperator returns (uint256) {
         require(_root != bytes32(0), "Invalid root");
         require(_itemCount > 0, "Invalid item count");
 
@@ -926,7 +1131,7 @@ contract GrievanceContractOptimized {
     function updateUpvoteCount(
         string calldata _complaintId,
         uint32 _newCount
-    ) external {
+    ) external onlyAuthorizedOperator {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         
@@ -946,7 +1151,7 @@ contract GrievanceContractOptimized {
         string calldata _userId,
         string calldata _complaintId,
         string calldata _details
-    ) external {
+    ) external onlyAuthorizedOperator {
         totalAuditLogs++;
         
         emit AuditLogCreated(
@@ -1013,6 +1218,29 @@ contract GrievanceContractOptimized {
         bytes32 complaintIdHash = keccak256(bytes(_complaintId));
         require(complaintExists[complaintIdHash], "Complaint does not exist");
         return complaintEscalationHistory[complaintIdHash];
+    }
+
+    function getResolutionCertificateTokenByComplaint(string calldata _complaintId)
+        external
+        view
+        returns (uint256)
+    {
+        bytes32 complaintIdHash = keccak256(bytes(_complaintId));
+        require(complaintExists[complaintIdHash], "Complaint does not exist");
+        return resolutionCertificateByComplaint[complaintIdHash];
+    }
+
+    function getResolutionCertificate(uint256 _tokenId)
+        external
+        view
+        returns (address recipientWallet, bytes32 recipientIdHash, string memory tokenUri)
+    {
+        require(_tokenId > 0 && _tokenId <= totalResolutionCertificates, "Certificate does not exist");
+        return (
+            resolutionCertificateOwners[_tokenId],
+            resolutionCertificateRecipientHashes[_tokenId],
+            resolutionCertificateUris[_tokenId]
+        );
     }
     
     /**

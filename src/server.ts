@@ -18,7 +18,7 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`Express server listening on port ${PORT}`);
   (async () => {
     try {
-      await import("./worker");
+      await import("./worker.js");
       console.log("Worker started successfully");
     } catch (err) {
       console.error("Failed to start worker:", err);

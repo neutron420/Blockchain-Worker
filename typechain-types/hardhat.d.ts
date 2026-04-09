@@ -17,23 +17,59 @@ declare module "hardhat/types/runtime" {
       name: "GrievanceContractOptimized",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.GrievanceContractOptimized__factory>;
+    getContractFactory(
+      name: "IAnonymousProofVerifier",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IAnonymousProofVerifier__factory>;
+    getContractFactory(
+      name: "MockAnonymousProofVerifier",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MockAnonymousProofVerifier__factory>;
 
     getContractAt(
       name: "GrievanceContractOptimized",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.GrievanceContractOptimized>;
+    getContractAt(
+      name: "IAnonymousProofVerifier",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IAnonymousProofVerifier>;
+    getContractAt(
+      name: "MockAnonymousProofVerifier",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MockAnonymousProofVerifier>;
 
     deployContract(
       name: "GrievanceContractOptimized",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.GrievanceContractOptimized>;
+    deployContract(
+      name: "IAnonymousProofVerifier",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IAnonymousProofVerifier>;
+    deployContract(
+      name: "MockAnonymousProofVerifier",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockAnonymousProofVerifier>;
 
     deployContract(
       name: "GrievanceContractOptimized",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.GrievanceContractOptimized>;
+    deployContract(
+      name: "IAnonymousProofVerifier",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IAnonymousProofVerifier>;
+    deployContract(
+      name: "MockAnonymousProofVerifier",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockAnonymousProofVerifier>;
 
     // default types
     getContractFactory(

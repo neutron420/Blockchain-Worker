@@ -21,7 +21,7 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from "./common";
+} from "../common";
 
 export declare namespace GrievanceContractOptimized {
   export type ComplaintStruct = {
@@ -153,6 +153,8 @@ export declare namespace GrievanceContractOptimized {
 export interface GrievanceContractOptimizedInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "anonymousIdentityProofVerified"
+      | "anonymousProofVerifier"
       | "assignComplaint"
       | "authorizedOperators"
       | "checkComplaintExists"
@@ -184,6 +186,7 @@ export interface GrievanceContractOptimizedInterface extends Interface {
       | "registerComplaint"
       | "registerUser"
       | "resolveComplaint"
+      | "setAnonymousProofVerifier"
       | "setAuthorizedOperator"
       | "totalAuditLogs"
       | "totalComplaints"
@@ -197,6 +200,7 @@ export interface GrievanceContractOptimizedInterface extends Interface {
       | "upvoteComplaint"
       | "userExists"
       | "users"
+      | "verifyAnonymousIdentityProof"
       | "verifyHash"
       | "verifyMerkleProof"
       | "voteCivicPriority"
@@ -206,6 +210,8 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     nameOrSignatureOrTopic:
       | "AgentPerformanceRecorded"
       | "AnonymousComplaintRegistered"
+      | "AnonymousIdentityProofVerified"
+      | "AnonymousProofVerifierUpdated"
       | "AuditLogCreated"
       | "AuthorizedOperatorUpdated"
       | "CivicPriorityCreated"
@@ -232,6 +238,14 @@ export interface GrievanceContractOptimizedInterface extends Interface {
       | "UserRegistered"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "anonymousIdentityProofVerified",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "anonymousProofVerifier",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "assignComplaint",
     values: [string, string]
@@ -391,6 +405,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     values: [string]
   ): string;
   encodeFunctionData(
+    functionFragment: "setAnonymousProofVerifier",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "setAuthorizedOperator",
     values: [AddressLike, boolean]
   ): string;
@@ -440,6 +458,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "users", values: [BytesLike]): string;
   encodeFunctionData(
+    functionFragment: "verifyAnonymousIdentityProof",
+    values: [BytesLike, BytesLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "verifyHash",
     values: [string, BytesLike]
   ): string;
@@ -452,6 +474,14 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     values: [string]
   ): string;
 
+  decodeFunctionResult(
+    functionFragment: "anonymousIdentityProofVerified",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "anonymousProofVerifier",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "assignComplaint",
     data: BytesLike
@@ -565,6 +595,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "setAnonymousProofVerifier",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "setAuthorizedOperator",
     data: BytesLike
   ): Result;
@@ -607,6 +641,10 @@ export interface GrievanceContractOptimizedInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "userExists", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "users", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "verifyAnonymousIdentityProof",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "verifyHash", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "verifyMerkleProof",
@@ -669,6 +707,41 @@ export namespace AnonymousComplaintRegisteredEvent {
     complaintId: string;
     commitmentHash: string;
     metadataHash: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace AnonymousIdentityProofVerifiedEvent {
+  export type InputTuple = [
+    identityCommitment: BytesLike,
+    verifiedBy: AddressLike,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    identityCommitment: string,
+    verifiedBy: string,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    identityCommitment: string;
+    verifiedBy: string;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace AnonymousProofVerifierUpdatedEvent {
+  export type InputTuple = [verifier: AddressLike, timestamp: BigNumberish];
+  export type OutputTuple = [verifier: string, timestamp: bigint];
+  export interface OutputObject {
+    verifier: string;
     timestamp: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -1377,6 +1450,14 @@ export interface GrievanceContractOptimized extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  anonymousIdentityProofVerified: TypedContractMethod<
+    [arg0: BytesLike],
+    [boolean],
+    "view"
+  >;
+
+  anonymousProofVerifier: TypedContractMethod<[], [string], "view">;
+
   assignComplaint: TypedContractMethod<
     [_complaintId: string, _assignedTo: string],
     [void],
@@ -1652,6 +1733,12 @@ export interface GrievanceContractOptimized extends BaseContract {
     "nonpayable"
   >;
 
+  setAnonymousProofVerifier: TypedContractMethod<
+    [_verifier: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
   setAuthorizedOperator: TypedContractMethod<
     [_operator: AddressLike, _isAuthorized: boolean],
     [void],
@@ -1719,6 +1806,12 @@ export interface GrievanceContractOptimized extends BaseContract {
     "view"
   >;
 
+  verifyAnonymousIdentityProof: TypedContractMethod<
+    [_identityCommitment: BytesLike, _proof: BytesLike],
+    [boolean],
+    "nonpayable"
+  >;
+
   verifyHash: TypedContractMethod<
     [_complaintId: string, _descriptionHash: BytesLike],
     [boolean],
@@ -1741,6 +1834,12 @@ export interface GrievanceContractOptimized extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "anonymousIdentityProofVerified"
+  ): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "anonymousProofVerifier"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "assignComplaint"
   ): TypedContractMethod<
@@ -2024,6 +2123,9 @@ export interface GrievanceContractOptimized extends BaseContract {
     nameOrSignature: "resolveComplaint"
   ): TypedContractMethod<[_complaintId: string], [void], "nonpayable">;
   getFunction(
+    nameOrSignature: "setAnonymousProofVerifier"
+  ): TypedContractMethod<[_verifier: AddressLike], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "setAuthorizedOperator"
   ): TypedContractMethod<
     [_operator: AddressLike, _isAuthorized: boolean],
@@ -2096,6 +2198,13 @@ export interface GrievanceContractOptimized extends BaseContract {
     "view"
   >;
   getFunction(
+    nameOrSignature: "verifyAnonymousIdentityProof"
+  ): TypedContractMethod<
+    [_identityCommitment: BytesLike, _proof: BytesLike],
+    [boolean],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "verifyHash"
   ): TypedContractMethod<
     [_complaintId: string, _descriptionHash: BytesLike],
@@ -2126,6 +2235,20 @@ export interface GrievanceContractOptimized extends BaseContract {
     AnonymousComplaintRegisteredEvent.InputTuple,
     AnonymousComplaintRegisteredEvent.OutputTuple,
     AnonymousComplaintRegisteredEvent.OutputObject
+  >;
+  getEvent(
+    key: "AnonymousIdentityProofVerified"
+  ): TypedContractEvent<
+    AnonymousIdentityProofVerifiedEvent.InputTuple,
+    AnonymousIdentityProofVerifiedEvent.OutputTuple,
+    AnonymousIdentityProofVerifiedEvent.OutputObject
+  >;
+  getEvent(
+    key: "AnonymousProofVerifierUpdated"
+  ): TypedContractEvent<
+    AnonymousProofVerifierUpdatedEvent.InputTuple,
+    AnonymousProofVerifierUpdatedEvent.OutputTuple,
+    AnonymousProofVerifierUpdatedEvent.OutputObject
   >;
   getEvent(
     key: "AuditLogCreated"
@@ -2317,6 +2440,28 @@ export interface GrievanceContractOptimized extends BaseContract {
       AnonymousComplaintRegisteredEvent.InputTuple,
       AnonymousComplaintRegisteredEvent.OutputTuple,
       AnonymousComplaintRegisteredEvent.OutputObject
+    >;
+
+    "AnonymousIdentityProofVerified(bytes32,address,uint256)": TypedContractEvent<
+      AnonymousIdentityProofVerifiedEvent.InputTuple,
+      AnonymousIdentityProofVerifiedEvent.OutputTuple,
+      AnonymousIdentityProofVerifiedEvent.OutputObject
+    >;
+    AnonymousIdentityProofVerified: TypedContractEvent<
+      AnonymousIdentityProofVerifiedEvent.InputTuple,
+      AnonymousIdentityProofVerifiedEvent.OutputTuple,
+      AnonymousIdentityProofVerifiedEvent.OutputObject
+    >;
+
+    "AnonymousProofVerifierUpdated(address,uint256)": TypedContractEvent<
+      AnonymousProofVerifierUpdatedEvent.InputTuple,
+      AnonymousProofVerifierUpdatedEvent.OutputTuple,
+      AnonymousProofVerifierUpdatedEvent.OutputObject
+    >;
+    AnonymousProofVerifierUpdated: TypedContractEvent<
+      AnonymousProofVerifierUpdatedEvent.InputTuple,
+      AnonymousProofVerifierUpdatedEvent.OutputTuple,
+      AnonymousProofVerifierUpdatedEvent.OutputObject
     >;
 
     "AuditLogCreated(string,string,string,string,string,uint256)": TypedContractEvent<

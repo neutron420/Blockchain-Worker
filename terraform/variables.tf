@@ -28,12 +28,12 @@ variable "desired_count" {
   default = 1
 }
 
-variable "blockchain_rpc_url" {
+variable "blockchain_rpc_url_secret_arn" {
   type      = string
   sensitive = true
 }
 
-variable "private_key" {
+variable "private_key_secret_arn" {
   type      = string
   sensitive = true
 }
@@ -52,22 +52,73 @@ variable "queue_name" {
   default = "blockchain_tasks"
 }
 
-variable "redis_url" {
+variable "user_queue_name" {
+  type    = string
+  default = "user:registration:queue"
+}
+
+variable "complaint_queue_name" {
+  type    = string
+  default = "complaint:blockchain:queue"
+}
+
+variable "metadata_sync_queue" {
+  type    = string
+  default = "blockchain:metadata:queue"
+}
+
+variable "max_retries" {
+  type    = string
+  default = "5"
+}
+
+variable "max_tx_retries" {
+  type    = string
+  default = "3"
+}
+
+variable "base_retry_delay_ms" {
+  type    = string
+  default = "1000"
+}
+
+variable "max_retry_delay_ms" {
+  type    = string
+  default = "30000"
+}
+
+variable "backend_sync_url" {
+  type    = string
+  default = ""
+}
+
+variable "backend_sync_token_secret_arn" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "emit_verification_code_tx" {
+  type    = string
+  default = "true"
+}
+
+variable "redis_url_secret_arn" {
   type      = string
   sensitive = true
 }
 
-variable "pinata_api_key" {
+variable "pinata_api_key_secret_arn" {
   type      = string
   sensitive = true
 }
 
-variable "pinata_api_secret" {
+variable "pinata_api_secret_secret_arn" {
   type      = string
   sensitive = true
 }
 
-variable "pinata_jwt" {
+variable "pinata_jwt_secret_arn" {
   type      = string
   sensitive = true
 }

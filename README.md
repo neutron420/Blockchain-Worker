@@ -42,21 +42,22 @@
 
 ## About The Project
 
-Swaraj Blockchain Network is a critical component of the SwarajDesk citizen grievance redressal system. This worker service acts as a bridge between the application layer and blockchain, ensuring every complaint and user registration is permanently and immutably recorded on the Ethereum blockchain. By processing Redis queue messages, uploading metadata to IPFS, and storing transaction hashes, block numbers, and IPFS CIDs in Redis-backed metadata keys, it provides complete transparency and accountability in the grievance management process.
+Swaraj Blockchain Network is a critical component of the SwarajDesk citizen grievance redressal system. This worker service acts as a bridge between the application layer and blockchain, ensuring every complaint and user registration is permanently and immutably recorded on Ethereum. It processes Redis queue messages with retry and DLQ safety, uploads metadata to IPFS, stores on-chain transaction metadata in Redis, and publishes metadata updates to a dedicated sync queue (with optional backend webhook) so application databases can stay in sync.
 
 ### How It Works
 
 ```
-SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Redis Metadata
-                                  ↓
-                            Etherscan Verification
+SwarajDesk App -> Redis Queue -> Worker -> IPFS (Pinata) -> Ethereum -> Redis Metadata
+              |                         |
+              +-> Processing / DLQ      +-> Metadata Sync Queue / Backend Webhook
 ```
 
-1. **Queue Processing**: Listens to Redis queues for new complaints and user registrations
-2. **IPFS Upload**: Uploads complaint metadata to IPFS via Pinata for decentralized storage
-3. **Blockchain Recording**: Stores complaint hash on Ethereum blockchain via smart contracts
-4. **Metadata Sync**: Stores transaction hash, block number, and IPFS CID in Redis-backed metadata keys
-5. **Verification**: All transactions are visible on Etherscan for public verification
+1. **Queue Processing**: Claims messages atomically into processing queues.
+2. **IPFS Upload**: Uploads grievance metadata to IPFS via Pinata.
+3. **Blockchain Recording**: Writes grievance data and audit signals on-chain.
+4. **Metadata Sync**: Writes `blockchainHash`, `blockchainBlock`, `ipfsHash`, and `isOnChain` metadata keys and publishes sync payloads.
+5. **Reliability**: Uses exponential backoff retries and moves poisoned messages to DLQ.
+6. **Verification**: Verification codes and transactions are publicly auditable.
 
 ### Built With
 
@@ -80,14 +81,17 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Red
 ## Key Features
 
 * 🔄 **Automated Queue Processing** — Continuously monitors Redis queues for new complaints and user registrations
+* 📬 **Reliable Queue Handling** — Uses processing queues and DLQ queues to prevent silent message loss
 * ⛓️ **Blockchain Immutability** — Permanently stores complaint hashes on Ethereum blockchain
 * 📦 **IPFS Integration** — Uploads complaint metadata to IPFS via Pinata for decentralized storage
-* 💾 **Metadata Sync** — Stores transaction hashes, block numbers, and IPFS CIDs alongside the blockchain record
+* 💾 **Metadata Sync** — Stores transaction hashes, block numbers, and IPFS CIDs in Redis and publishes sync payloads for DB updaters
 * 🧾 **Status Audit Trail** — Captures every complaint status change on-chain with actor and timestamp metadata
 * ⏱️ **SLA Tracking** — Records SLA expectations and breach events on-chain for accountability
 * ⬆️ **Escalation Trail** — Persists complaint escalation history on-chain for public transparency
+* 🔐 **Operator Authorization** — Sensitive contract operations are restricted to authorized operators
+* 🕵️ **Anonymous Proof Hook** — Optional verifier-backed proof checks for anonymous complaints when configured
 * 🔍 **Etherscan Verification** — All transactions are publicly verifiable on Etherscan
-* 🔁 **Retry Mechanism** — Built-in exponential backoff retry logic for failed transactions
+* 🔁 **Retry Mechanism** — Exponential backoff retries for both transaction submission and failed queue processing
 * 📜 **Smart Contract Integration** — Uses Solidity smart contracts for data storage
 * 🐳 **Production Ready** — Fully Dockerized with AWS ECS Fargate deployment via Terraform
 * 💚 **Health Monitoring** — Built-in `/health` endpoint with uptime and status
@@ -112,7 +116,19 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Red
 - Location information
 - User ID and submission date
 - Public/private visibility flag
+- Optional anonymous commitment and proof payload
 - Optional SLA deadline, escalation target, and status reason fields
+
+**Processing Queues (automatic):**
+- `user:registration:queue:processing`
+- `complaint:blockchain:queue:processing`
+
+**Dead Letter Queues (automatic):**
+- `user:registration:queue:dlq`
+- `complaint:blockchain:queue:dlq`
+
+**Metadata Sync Queue:** `blockchain:metadata:queue`
+- Contains records with `entityType`, `entityId`, `blockchainHash`, `blockchainBlock`, `ipfsHash`, `isOnChain`, and `updatedAt`
 
 ### Data Flow
 
@@ -192,14 +208,21 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Red
     PRIVATE_KEY=your_ethereum_private_key
     CONTRACT_ADDRESS=0xYourDeployedContractAddress
 
-    WORKER_POLL_INTERVAL=5000
-    QUEUE_NAME=blockchain_tasks
-
     REDIS_URL=redis://localhost:6379
-
-    PINATA_API_KEY=your_pinata_api_key
-    PINATA_API_SECRET=your_pinata_api_secret
     PINATA_JWT=your_pinata_jwt_token
+
+    USER_QUEUE_NAME=user:registration:queue
+    COMPLAINT_QUEUE_NAME=complaint:blockchain:queue
+    METADATA_SYNC_QUEUE=blockchain:metadata:queue
+
+    WORKER_POLL_INTERVAL=5000
+    MAX_RETRIES=5
+    MAX_TX_RETRIES=3
+    BASE_RETRY_DELAY_MS=1000
+    MAX_RETRY_DELAY_MS=30000
+
+    BACKEND_SYNC_URL=https://backend.example.com/api/blockchain/sync
+    BACKEND_SYNC_TOKEN=replace_with_token
     ```
 
 4.  **Deploy smart contracts (if not deployed):**
@@ -215,7 +238,7 @@ SwarajDesk App → Redis Queue → Worker → IPFS (Pinata) → Ethereum → Red
 
     # Production
     bun run build
-    bun dist/server.js
+    node dist/server.js
     ```
 
 ## Project Structure
@@ -230,7 +253,7 @@ swaraj-blockchain-network/
 ├── terraform/              # Infrastructure as Code
 │   ├── main.tf             # AWS resources (VPC, ECR, ECS, IAM)
 │   ├── variables.tf        # Configurable variables
-│   ├── terraform.tfvars    # Actual values (gitignored)
+│   ├── terraform.tfvars    # Deployment values (store only secret ARNs)
 │   └── outputs.tf          # ECR URL, push commands
 ├── scripts/                # Deployment scripts
 ├── test/                   # Smart contract tests
@@ -341,7 +364,7 @@ function registerUser(
     string memory city,
     string memory state,
     string memory municipal
-) public returns (bool)
+  ) public
 
 function registerComplaint(
     string memory complaintId,
@@ -359,7 +382,23 @@ function registerComplaint(
     string memory city,
     string memory locality,
     string memory state
-) public returns (bool)
+  ) public
+
+  function setAuthorizedOperator(address operator, bool isAuthorized) public
+
+  function setAnonymousProofVerifier(address verifier) public
+
+  function verifyAnonymousIdentityProof(bytes32 identityCommitment, bytes proof)
+    public returns (bool)
+
+  function issueResolutionCertificateToWallet(
+    string memory complaintId,
+    string memory recipientId,
+    address recipientWallet,
+    string memory tokenUri
+  ) public returns (uint256)
+
+  function emitComplaintVerificationCode(string memory complaintId) public returns (bytes32)
 ```
 
 ## Environment Variables
@@ -370,11 +409,19 @@ function registerComplaint(
 | `PRIVATE_KEY` | Ethereum wallet private key | ✅ |
 | `CONTRACT_ADDRESS` | Deployed smart contract address | ✅ |
 | `REDIS_URL` | Redis connection string | ✅ |
-| `PINATA_API_KEY` | Pinata API key | ✅ |
-| `PINATA_API_SECRET` | Pinata API secret | ✅ |
 | `PINATA_JWT` | Pinata JWT token | ✅ |
+| `USER_QUEUE_NAME` | User registration queue name | ❌ |
+| `COMPLAINT_QUEUE_NAME` | Complaint queue name | ❌ |
+| `METADATA_SYNC_QUEUE` | Queue for DB metadata sync payloads | ❌ |
 | `WORKER_POLL_INTERVAL` | Queue poll interval in ms (default: 5000) | ❌ |
-| `QUEUE_NAME` | Redis queue name (default: blockchain_tasks) | ❌ |
+| `MAX_RETRIES` | Queue retry count before DLQ (default: 5) | ❌ |
+| `MAX_TX_RETRIES` | Transaction retry count (default: 3) | ❌ |
+| `BASE_RETRY_DELAY_MS` | Base backoff delay in ms (default: 1000) | ❌ |
+| `MAX_RETRY_DELAY_MS` | Maximum backoff delay in ms (default: 30000) | ❌ |
+| `BACKEND_SYNC_URL` | Optional API endpoint to push metadata for DB updates | ❌ |
+| `BACKEND_SYNC_TOKEN` | Optional bearer token for backend sync API | ❌ |
+| `EMIT_VERIFICATION_CODE_TX` | Emit on-chain verification-code event (default: true) | ❌ |
+| `QUEUE_NAME` | Legacy fallback queue name for complaint queue | ❌ |
 
 ## Troubleshooting
 
@@ -464,7 +511,7 @@ aws ecs update-service \
 ## Security Best Practices
 
 - 🔒 Never commit private keys to version control
-- 🔑 `terraform.tfvars` is gitignored — contains all secrets
+- 🔑 Keep raw secret values in AWS Secrets Manager; store only secret ARNs in Terraform vars
 - 🛡️ Use AWS Secrets Manager for production secrets
 - ⚡ Implement rate limiting on queue processing
 - 💰 Monitor transaction costs and set gas limits
